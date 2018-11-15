@@ -5,7 +5,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 
-namespace System.Linq
+namespace System.LinqCore
 {
     /// <summary>
     /// An immutable node in a singly-linked list of items.

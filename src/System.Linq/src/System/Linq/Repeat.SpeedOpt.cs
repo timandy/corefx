@@ -2,9 +2,10 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
+using System.Collections;
 using System.Collections.Generic;
 
-namespace System.Linq
+namespace System.LinqCore
 {
     public static partial class Enumerable
     {
@@ -18,7 +19,7 @@ namespace System.Linq
                 TResult[] array = new TResult[_count];
                 if (_current != null)
                 {
-                    Array.Fill(array, _current);
+                    ArrayUtils.Fill(array, _current);
                 }
 
                 return array;

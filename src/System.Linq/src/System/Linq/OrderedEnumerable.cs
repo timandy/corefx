@@ -5,7 +5,7 @@
 using System.Collections;
 using System.Collections.Generic;
 
-namespace System.Linq
+namespace System.LinqCore
 {
     internal abstract partial class OrderedEnumerable<TElement> : IOrderedEnumerable<TElement>
     {
