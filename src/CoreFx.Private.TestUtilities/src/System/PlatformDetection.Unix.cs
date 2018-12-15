@@ -18,6 +18,7 @@ namespace System
         public static bool IsWindows => false;
         public static bool IsWindows7 => false;
         public static bool IsWindows8x => false;
+        public static bool IsWindows8xOrLater => false;
         public static bool IsWindows10Version1607OrGreater => false;
         public static bool IsWindows10Version1703OrGreater => false;
         public static bool IsWindows10Version1709OrGreater => false;
@@ -59,9 +60,35 @@ namespace System
         public static bool IsNetfx471OrNewer => false;
         public static bool IsNetfx472OrNewer => false;
 
+        public static bool IsDrawingSupported { get; } = GetGdiplusIsAvailable();
+
+        [DllImport("libdl")]
+        private static extern IntPtr dlopen(string libName, int flags);
+        public const int RTLD_NOW = 0x002;
+
+        private static bool GetGdiplusIsAvailable()
+        {
+            IntPtr nativeLib;
+
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            {
+                nativeLib = dlopen("libgdiplus.dylib", RTLD_NOW);
+            }
+            else
+            {
+                nativeLib = dlopen("libgdiplus.so", RTLD_NOW);
+                if (nativeLib == IntPtr.Zero)
+                {
+                    nativeLib = dlopen("libgdiplus.so.0", RTLD_NOW);
+                }
+            }
+
+            return nativeLib != IntPtr.Zero;
+        }
+
         public static Version OSXVersion { get; } = ToVersion(Microsoft.DotNet.PlatformAbstractions.RuntimeEnvironment.OperatingSystemVersion);
 
-        public static Version OpenSslVersion => RuntimeInformation.IsOSPlatform(OSPlatform.Linux) ? GetOpenSslVersion() : throw new PlatformNotSupportedException();
+        public static Version OpenSslVersion => !RuntimeInformation.IsOSPlatform(OSPlatform.OSX) ? GetOpenSslVersion() : throw new PlatformNotSupportedException();
 
         public static string GetDistroVersionString()
         {
