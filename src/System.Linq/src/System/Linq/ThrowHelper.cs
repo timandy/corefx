@@ -5,7 +5,7 @@
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
-namespace System.Linq
+namespace System.LinqCore
 {
     internal static class ThrowHelper
     {
