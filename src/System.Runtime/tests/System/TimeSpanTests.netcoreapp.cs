@@ -10,7 +10,7 @@ namespace System.Tests
 {
     public partial class TimeSpanTests
     {
-        private static IEnumerable<object[]> MultiplicationTestData()
+        public static IEnumerable<object[]> MultiplicationTestData()
         {
             yield return new object[] {new TimeSpan(2, 30, 0), 2.0, new TimeSpan(5, 0, 0)};
             yield return new object[] {new TimeSpan(14, 2, 30, 0), 192.0, TimeSpan.FromDays(2708)};
@@ -20,6 +20,30 @@ namespace System.Tests
             yield return new object[] {TimeSpan.FromDays(-29.530587981), -12.0, TimeSpan.FromDays(354.367055833333)};
             yield return new object[] {TimeSpan.FromDays(-29.530587981), 0.0, TimeSpan.Zero};
             yield return new object[] {TimeSpan.MaxValue, 0.5, TimeSpan.FromTicks((long)(long.MaxValue * 0.5))};
+        }
+
+        // ParseDifferentLengthFractionWithLeadingZerosData mainly testing the behavior we have fixed in net core
+        // which is the way we normalize the parsed fraction and possibly rounding it.
+        public static IEnumerable<object[]> ParseDifferentLengthFractionWithLeadingZerosData()
+        {
+            yield return new object[] {"00:00:00.00000001",   new TimeSpan(0)};
+            yield return new object[] {"00:00:00.00000005",   new TimeSpan(1)};
+            yield return new object[] {"00:00:00.09999999",   new TimeSpan(1_000_000)};
+            yield return new object[] {"00:00:00.0268435455", new TimeSpan(268435)};
+            yield return new object[] {"00:00:00.01",         new TimeSpan(1_00_000)};
+            yield return new object[] {"0:00:00.01000000",    new TimeSpan(100_000)};
+            yield return new object[] {"0:00:00.010000000",   new TimeSpan(100_000)};
+            yield return new object[] {"0:00:00.0123456",     new TimeSpan(123456)};
+            yield return new object[] {"0:00:00.00123456",    new TimeSpan(12346)};
+            yield return new object[] {"0:00:00.00000098",    new TimeSpan(10)};
+            yield return new object[] {"0:00:00.00000099",    new TimeSpan(10)};
+        }
+
+        [Theory, MemberData(nameof(ParseDifferentLengthFractionWithLeadingZerosData))]
+        public static void Multiplication(string input, TimeSpan expected)
+        {
+            Assert.Equal(expected, TimeSpan.Parse(input, CultureInfo.InvariantCulture));
+            Assert.Equal(expected, TimeSpan.ParseExact(input, "g", CultureInfo.InvariantCulture));
         }
 
         [Theory, MemberData(nameof(MultiplicationTestData))]

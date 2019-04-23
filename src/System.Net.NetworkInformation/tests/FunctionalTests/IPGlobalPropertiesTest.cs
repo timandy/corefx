@@ -27,7 +27,7 @@ namespace System.Net.NetworkInformation.Tests
             _log = TestLogging.GetInstance();
         }
 
-        [Fact]
+        [ConditionalFact(typeof(PlatformDetection), nameof(PlatformDetection.IsNotWindowsSubsystemForLinux))] // [ActiveIssue(11057)]
         [PlatformSpecific(TestPlatforms.AnyUnix)]
         public void IPGlobalProperties_AccessAllMethods_NoErrors()
         {
@@ -52,10 +52,9 @@ namespace System.Net.NetworkInformation.Tests
             Assert.NotNull(gp.GetUdpIPv6Statistics());
         }
 
-        [Theory]
+        [ConditionalTheory(typeof(PlatformDetection), nameof(PlatformDetection.IsNotWindowsSubsystemForLinux))] // [ActiveIssue(11057)]
         [MemberData(nameof(Loopbacks))]
         [PlatformSpecific(TestPlatforms.AnyUnix)]
-        [ActiveIssue(33257, TestPlatforms.Linux)]
         public void IPGlobalProperties_TcpListeners_Succeed(IPAddress address)
         {
             using (var server = new Socket(address.AddressFamily, SocketType.Stream, ProtocolType.Tcp))
@@ -79,10 +78,9 @@ namespace System.Net.NetworkInformation.Tests
             }
         }
 
-        [Theory]
+        [ConditionalTheory(typeof(PlatformDetection), nameof(PlatformDetection.IsNotWindowsSubsystemForLinux))] // [ActiveIssue(11057)]
         [MemberData(nameof(Loopbacks))]
         [PlatformSpecific(TestPlatforms.AnyUnix)]
-        [ActiveIssue(33257, TestPlatforms.Linux)]
         public async Task IPGlobalProperties_TcpActiveConnections_Succeed(IPAddress address)
         {
             using (var server = new Socket(address.AddressFamily, SocketType.Stream, ProtocolType.Tcp))
@@ -111,9 +109,8 @@ namespace System.Net.NetworkInformation.Tests
             }
         }
 
-        [Fact]
+        [ConditionalFact(typeof(PlatformDetection), nameof(PlatformDetection.IsNotWindowsSubsystemForLinux))] // [ActiveIssue(11057)]
         [PlatformSpecific(TestPlatforms.AnyUnix)]
-        [ActiveIssue(33257, TestPlatforms.Linux)]
         public void IPGlobalProperties_TcpActiveConnections_NotListening()
         {
             TcpConnectionInformation[] tcpCconnections = IPGlobalProperties.GetIPGlobalProperties().GetActiveTcpConnections();

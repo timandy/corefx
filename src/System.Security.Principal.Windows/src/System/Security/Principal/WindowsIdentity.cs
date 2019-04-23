@@ -16,7 +16,7 @@ using KERB_LOGON_SUBMIT_TYPE = Interop.SspiCli.KERB_LOGON_SUBMIT_TYPE;
 using KERB_S4U_LOGON = Interop.SspiCli.KERB_S4U_LOGON;
 using KerbS4uLogonFlags = Interop.SspiCli.KerbS4uLogonFlags;
 using LUID = Interop.LUID;
-using LSA_STRING = Interop.SspiCli.LSA_STRING;
+using LSA_STRING = Interop.Advapi32.LSA_STRING;
 using QUOTA_LIMITS = Interop.SspiCli.QUOTA_LIMITS;
 using SECURITY_LOGON_TYPE = Interop.SspiCli.SECURITY_LOGON_TYPE;
 using TOKEN_SOURCE = Interop.SspiCli.TOKEN_SOURCE;
@@ -417,7 +417,7 @@ namespace System.Security.Principal
                         }
                         else
                         {
-                            /// This is an impersonation token, get the impersonation level
+                            // This is an impersonation token, get the impersonation level
                             int level = GetTokenInformation<int>(TokenInformationClass.TokenImpersonationLevel);
                             impersonationLevel = (TokenImpersonationLevel)level + 1;
                         }

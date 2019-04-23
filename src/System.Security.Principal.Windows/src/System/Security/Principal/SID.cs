@@ -158,9 +158,9 @@ namespace System.Security.Principal
         DigestAuthenticationSid = 52,
         /// <summary>Indicates a SID present when the Secure Channel (SSL/TLS) authentication package authenticated the client.</summary>
         SChannelAuthenticationSid = 53,
-        /// <summary>Indicates a SID present when the user authenticated from within the forest or across a trust that does not have the selective authentication option enabled. If this SID is present, then <see cref="WinOtherOrganizationSid"/> cannot be present.</summary>
+        /// <summary>Indicates a SID present when the user authenticated from within the forest or across a trust that does not have the selective authentication option enabled. If this SID is present, then <see cref="OtherOrganizationSid"/> cannot be present.</summary>
         ThisOrganizationSid = 54,
-        /// <summary>Indicates a SID present when the user authenticated across a forest with the selective authentication option enabled. If this SID is present, then <see cref="WinThisOrganizationSid"/> cannot be present.</summary>
+        /// <summary>Indicates a SID present when the user authenticated across a forest with the selective authentication option enabled. If this SID is present, then <see cref="ThisOrganizationSid"/> cannot be present.</summary>
         OtherOrganizationSid = 55,
         /// <summary>Indicates a SID that allows a user to create incoming forest trusts. It is added to the token of users who are a member of the Incoming Forest Trust Builders built-in group in the root domain of the forest.</summary>
         BuiltinIncomingForestTrustBuildersSid = 56,
@@ -540,7 +540,7 @@ nameof(binaryForm));
             }
             else if (Error != Interop.Errors.ERROR_SUCCESS)
             {
-                Debug.Assert(false, string.Format(CultureInfo.InvariantCulture, "Win32.CreateSidFromString returned unrecognized error {0}", Error));
+                Debug.Fail($"Win32.CreateSidFromString returned unrecognized error {Error}");
                 throw new Win32Exception(Error);
             }
 
@@ -635,7 +635,7 @@ nameof(binaryForm));
                 }
                 else if (ErrorCode != Interop.Errors.ERROR_SUCCESS)
                 {
-                    Debug.Assert(false, string.Format(CultureInfo.InvariantCulture, "Win32.GetWindowsAccountDomainSid returned unrecognized error {0}", ErrorCode));
+                    Debug.Fail($"Win32.GetWindowsAccountDomainSid returned unrecognized error {ErrorCode}");
                     throw new Win32Exception(ErrorCode);
                 }
 
@@ -658,7 +658,7 @@ nameof(binaryForm));
             }
             else if (Error != Interop.Errors.ERROR_SUCCESS)
             {
-                Debug.Assert(false, string.Format(CultureInfo.InvariantCulture, "Win32.CreateWellKnownSid returned unrecognized error {0}", Error));
+                Debug.Fail($"Win32.CreateWellKnownSid returned unrecognized error {Error}");
                 throw new Win32Exception(Error);
             }
 
@@ -882,7 +882,7 @@ nameof(binaryForm));
             }
             else if (Error != Interop.Errors.ERROR_SUCCESS)
             {
-                Debug.Assert(false, string.Format(CultureInfo.InvariantCulture, "Win32.GetWindowsAccountDomainSid returned unrecognized error {0}", Error));
+                Debug.Fail($"Win32.GetWindowsAccountDomainSid returned unrecognized error {Error}");
                 throw new Win32Exception(Error);
             }
             return ResultSid;
@@ -1120,7 +1120,7 @@ nameof(binaryForm));
                 {
                     uint win32ErrorCode = Interop.Advapi32.LsaNtStatusToWinError(ReturnCode);
 
-                    Debug.Assert(false, string.Format(CultureInfo.InvariantCulture, "Interop.LsaLookupSids returned {0}", win32ErrorCode));
+                    Debug.Fail($"Interop.LsaLookupSids returned {win32ErrorCode}");
                     throw new Win32Exception(unchecked((int)win32ErrorCode));
                 }
 

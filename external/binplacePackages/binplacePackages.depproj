@@ -1,5 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <BinPlaceRef>true</BinPlaceRef>
     <BinPlaceRuntime>true</BinPlaceRuntime>
@@ -30,6 +29,10 @@
     <!-- runtime dependency: System.Data.SqlClient uap10.0.16299 -->
     <!-- runtime dependency: System.Diagnostics.PerformanceCounters netcoreapp2.0,net461 -->
     <PackageReference Include="System.Memory" Condition="'$(TargetGroup)' == 'netcoreapp2.0' OR '$(TargetGroup)' == 'uap10.0.16299' OR '$(TargetsNetfx)' == 'true' OR ('$(TargetsNetStandard)' == 'true' AND '$(NETStandardVersion)' &gt;= 1.1)">
+      <Version>4.5.1</Version>
+    </PackageReference>
+
+    <PackageReference Include="System.Threading.Tasks.Extensions" Condition="'$(TargetGroup)' == 'netcoreapp2.0' OR '$(TargetsNetfx)' == 'true' OR '$(TargetsNetStandard)' == 'true'">
       <Version>4.5.1</Version>
     </PackageReference>
 
