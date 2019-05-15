@@ -2,7 +2,6 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-#nullable enable
 using System.Security;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -831,7 +830,7 @@ namespace System.Runtime.InteropServices
         /// a PROGID in the metadata then it is returned otherwise a stable PROGID
         /// is generated based on the fully qualified name of the type.
         /// </summary>
-        public static string GenerateProgIdForType(Type type)
+        public static string? GenerateProgIdForType(Type type)
         {
             if (type is null)
             {

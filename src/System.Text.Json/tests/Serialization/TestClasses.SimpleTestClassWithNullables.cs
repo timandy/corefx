@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
+using System.Collections.Generic;
 using Xunit;
 
 namespace System.Text.Json.Serialization.Tests
@@ -42,6 +43,8 @@ namespace System.Text.Json.Serialization.Tests
         public DateTime?[] MyDateTimeArray { get; set; }
         public DateTimeOffset?[] MyDateTimeOffsetArray { get; set; }
         public SampleEnum?[] MyEnumArray { get; set; }
+        public Dictionary<string, string> MyStringToStringDict { get; set; }
+        public List<int?> MyListOfNullInt { get; set; }
     }
 
     public class SimpleTestClassWithNulls : SimpleBaseClassWithNullables, ITestClass
@@ -87,6 +90,8 @@ namespace System.Text.Json.Serialization.Tests
             Assert.Null(MyDateTimeArray);
             Assert.Null(MyDateTimeOffsetArray);
             Assert.Null(MyEnumArray);
+            Assert.Null(MyStringToStringDict);
+            Assert.Null(MyListOfNullInt);
         }
         public static readonly string s_json =
                 @"{" +
@@ -123,7 +128,9 @@ namespace System.Text.Json.Serialization.Tests
                 @"""MyDecimalArray"" : null," +
                 @"""MyDateTimeArray"" : null," +
                 @"""MyDateTimeOffsetArray"" : null," +
-                @"""MyEnumArray"" : null" +
+                @"""MyEnumArray"" : null," +
+                @"""MyStringToStringDict"" : null," +
+                @"""MyListOfNullInt"" : null" +
                 @"}";
 
         public static readonly byte[] s_data = Encoding.UTF8.GetBytes(s_json);
@@ -166,7 +173,9 @@ namespace System.Text.Json.Serialization.Tests
                 @"""MyDecimalArray"" : [3.3]," +
                 @"""MyDateTimeArray"" : [""2019-01-30T12:01:02.0000000Z""]," +
                 @"""MyDateTimeOffsetArray"" : [""2019-01-30T12:01:02.0000000+01:00""]," +
-                @"""MyEnumArray"" : [2]" +
+                @"""MyEnumArray"" : [2]," +
+                @"""MyStringToStringDict"" : {""key"" : ""value""}," +
+                @"""MyListOfNullInt"" : [null]" +
                 @"}";
 
         public static readonly byte[] s_data = Encoding.UTF8.GetBytes(s_json);
@@ -208,6 +217,8 @@ namespace System.Text.Json.Serialization.Tests
             MyDateTimeArray = new DateTime?[] { new DateTime(2019, 1, 30, 12, 1, 2, DateTimeKind.Utc) };
             MyDateTimeOffsetArray = new DateTimeOffset?[] { new DateTimeOffset(2019, 1, 30, 12, 1, 2, new TimeSpan(1, 0, 0)) };
             MyEnumArray = new SampleEnum?[] { SampleEnum.Two };
+            MyStringToStringDict = new Dictionary<string, string> { { "key", "value" } };
+            MyListOfNullInt = new List<int?> { null };
         }
 
         public void Verify()
@@ -247,6 +258,8 @@ namespace System.Text.Json.Serialization.Tests
             Assert.Equal(new DateTime(2019, 1, 30, 12, 1, 2, DateTimeKind.Utc), MyDateTimeArray[0]);
             Assert.Equal(new DateTimeOffset(2019, 1, 30, 12, 1, 2, new TimeSpan(1, 0, 0)), MyDateTimeOffsetArray[0]);
             Assert.Equal(SampleEnum.Two, MyEnumArray[0]);
+            Assert.Equal("value", MyStringToStringDict["key"]);
+            Assert.Null(MyListOfNullInt[0]);
         }
     }
 }

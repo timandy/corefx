@@ -2,7 +2,6 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-#nullable enable
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Security;
@@ -176,8 +175,8 @@ namespace System.Runtime.Serialization
             }
 
             _rootType = type;
-            _rootTypeName = type.FullName;
-            _rootTypeAssemblyName = type.Module.Assembly.FullName;
+            _rootTypeName = type.FullName!;
+            _rootTypeAssemblyName = type.Module.Assembly.FullName!;
 
             _names = new string[DefaultSize];
             _values = new object[DefaultSize];
@@ -238,8 +237,8 @@ namespace System.Runtime.Serialization
             if (!ReferenceEquals(_rootType, type))
             {
                 _rootType = type;
-                _rootTypeName = type.FullName;
-                _rootTypeAssemblyName = type.Module.Assembly.FullName;
+                _rootTypeName = type.FullName!;
+                _rootTypeAssemblyName = type.Module.Assembly.FullName!;
                 IsFullTypeNameSetExplicit = false;
                 IsAssemblyNameSetExplicit = false;
             }

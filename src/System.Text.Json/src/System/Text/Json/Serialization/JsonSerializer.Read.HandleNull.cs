@@ -27,18 +27,19 @@ namespace System.Text.Json.Serialization
             JsonPropertyInfo propertyInfo = state.Current.JsonPropertyInfo;
             if (!propertyInfo.CanBeNull)
             {
-                ThrowHelper.ThrowJsonReaderException_DeserializeCannotBeNull(reader, state);
+                ThrowHelper.ThrowJsonException_DeserializeCannotBeNull(reader, state.PropertyPath);
             }
 
-            if (state.Current.IsEnumerable() || state.Current.IsDictionary())
+            if (state.Current.IsEnumerable || state.Current.IsDictionary)
             {
-                ApplyObjectToEnumerable(null, options, ref state.Current);
+                ApplyObjectToEnumerable(null, options, ref state, ref reader);
                 return false;
             }
 
-            if (state.Current.IsPropertyEnumerable() || state.Current.IsPropertyADictionary())
+            if (state.Current.IsPropertyEnumerable)
             {
-                state.Current.JsonPropertyInfo.ApplyNullValue(options, ref state);
+                bool setPropertyToNull = !state.Current.EnumerableCreated;
+                ApplyObjectToEnumerable(null, options, ref state, ref reader, setPropertyDirectly: setPropertyToNull);
                 return false;
             }
 
@@ -50,7 +51,7 @@ namespace System.Text.Json.Serialization
 
             if (!propertyInfo.IgnoreNullValues)
             {
-                state.Current.JsonPropertyInfo.SetValueAsObject(state.Current.ReturnValue, null, options);
+                state.Current.JsonPropertyInfo.SetValueAsObject(state.Current.ReturnValue, value : null);
             }
 
             return false;

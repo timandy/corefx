@@ -16,16 +16,16 @@ namespace System.Text.Json.Serialization
     /// </summary>
     internal abstract class JsonPropertyInfoCommon<TClass, TDeclaredProperty, TRuntimeProperty> : JsonPropertyInfo
     {
-        internal bool _isPropertyPolicy;
-        internal Func<TClass, TDeclaredProperty> Get { get; private set; }
-        internal Action<TClass, TDeclaredProperty> Set { get; private set; }
+        public bool _isPropertyPolicy;
+        public Func<TClass, TDeclaredProperty> Get { get; private set; }
+        public Action<TClass, TDeclaredProperty> Set { get; private set; }
 
         public JsonValueConverter<TRuntimeProperty> ValueConverter { get; internal set; }
 
         // Constructor used for internal identifiers
-        internal JsonPropertyInfoCommon() { }
+        public JsonPropertyInfoCommon() { }
 
-        internal JsonPropertyInfoCommon(
+        public JsonPropertyInfoCommon(
             Type parentClassType,
             Type declaredPropertyType,
             Type runtimePropertyType,
@@ -53,23 +53,19 @@ namespace System.Text.Json.Serialization
                 _isPropertyPolicy = true;
                 HasGetter = true;
                 HasSetter = true;
-
-                if (ClassType == ClassType.Dictionary)
-                {
-                    ValueConverter = DefaultConverters<TRuntimeProperty>.s_converter;
-                }
+                ValueConverter = DefaultConverters<TRuntimeProperty>.s_converter;
             }
 
             GetPolicies(options);
         }
 
-        internal override void GetPolicies(JsonSerializerOptions options)
+        public override void GetPolicies(JsonSerializerOptions options)
         {
             ValueConverter = DefaultConverters<TRuntimeProperty>.s_converter;
             base.GetPolicies(options);
         }
 
-        internal override object GetValueAsObject(object obj, JsonSerializerOptions options)
+        public override object GetValueAsObject(object obj)
         {
             if (_isPropertyPolicy)
             {
@@ -80,7 +76,7 @@ namespace System.Text.Json.Serialization
             return Get((TClass)obj);
         }
 
-        internal override void SetValueAsObject(object obj, object value, JsonSerializerOptions options)
+        public override void SetValueAsObject(object obj, object value)
         {
             Debug.Assert(Set != null);
             TDeclaredProperty typedValue = (TDeclaredProperty)value;
@@ -91,21 +87,40 @@ namespace System.Text.Json.Serialization
             }
         }
 
-        internal override IList CreateConverterList()
+        public override IList CreateConverterList()
         {
             return new List<TDeclaredProperty>();
         }
 
-        // Map interfaces to a well-known implementation.
-        internal override Type GetConcreteType(Type interfaceType)
+        public override Type GetDictionaryConcreteType()
         {
-            if (interfaceType.IsAssignableFrom(typeof(IDictionary<string, TRuntimeProperty>)) ||
-                interfaceType.IsAssignableFrom(typeof(IReadOnlyDictionary<string, TRuntimeProperty>)))
-            {
-                return typeof(Dictionary<string, TRuntimeProperty>);
-            }
+            return typeof(Dictionary<string, TRuntimeProperty>);
+        }
 
-            return interfaceType;
+        // Creates an IEnumerable<TRuntimePropertyType> and populates it with the items in the,
+        // sourceList argument then uses the delegateKey argument to identify the appropriate cached
+        // CreateRange<TRuntimePropertyType> method to create and return the desired immutable collection type.
+        public override IEnumerable CreateImmutableCollectionFromList(string delegateKey, IList sourceList)
+        {
+            Debug.Assert(DefaultImmutableConverter.CreateRangeDelegates.ContainsKey(delegateKey));
+
+            DefaultImmutableConverter.ImmutableCreateRangeDelegate<TRuntimeProperty> createRangeDelegate = (
+                (DefaultImmutableConverter.ImmutableCreateRangeDelegate<TRuntimeProperty>)DefaultImmutableConverter.CreateRangeDelegates[delegateKey]);
+
+            return (IEnumerable)createRangeDelegate.Invoke(CreateGenericIEnumerableFromList(sourceList));
+        }
+
+        public override IEnumerable CreateIEnumerableConstructibleType(Type enumerableType, IList sourceList)
+        {
+            return (IEnumerable)Activator.CreateInstance(enumerableType, CreateGenericIEnumerableFromList(sourceList));
+        }
+
+        private IEnumerable<TRuntimeProperty> CreateGenericIEnumerableFromList(IList sourceList)
+        {
+            foreach (object item in sourceList)
+            {
+                yield return (TRuntimeProperty)item;
+            }
         }
     }
 }

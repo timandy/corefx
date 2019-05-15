@@ -10,6 +10,7 @@ using System.Runtime.InteropServices;
 
 namespace System.Text.Json.Serialization
 {
+    [DebuggerDisplay("ClassType.{ClassType} {Type.Name}")]
     internal sealed partial class JsonClassInfo
     {
         // The length of the property name embedded in the key (in bytes).
@@ -84,55 +85,54 @@ namespace System.Text.Json.Serialization
             CreateObject = options.ClassMaterializerStrategy.CreateConstructor(type);
 
             // Ignore properties on enumerable.
-            if (ClassType == ClassType.Object)
+            switch (ClassType)
             {
-                var propertyNames = new HashSet<string>(StringComparer.Ordinal);
+                case ClassType.Object:
+                    var propertyNames = new HashSet<string>(StringComparer.Ordinal);
 
-                foreach (PropertyInfo propertyInfo in type.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
-                {
-                    // For now we only support public getters\setters
-                    if (propertyInfo.GetMethod?.IsPublic == true ||
-                        propertyInfo.SetMethod?.IsPublic == true)
+                    foreach (PropertyInfo propertyInfo in type.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
                     {
-                        JsonPropertyInfo jsonPropertyInfo = AddProperty(propertyInfo.PropertyType, propertyInfo, type, options);
-
-                        if (jsonPropertyInfo.NameAsString == null)
+                        // For now we only support public getters\setters
+                        if (propertyInfo.GetMethod?.IsPublic == true ||
+                            propertyInfo.SetMethod?.IsPublic == true)
                         {
-                            ThrowHelper.ThrowInvalidOperationException_SerializerPropertyNameNull(this, jsonPropertyInfo);
-                        }
+                            JsonPropertyInfo jsonPropertyInfo = AddProperty(propertyInfo.PropertyType, propertyInfo, type, options);
 
-                        // If the JsonPropertyNameAttribute or naming policy results in collisions, throw an exception.
-                        if (!propertyNames.Add(jsonPropertyInfo.CompareNameAsString))
-                        {
-                            ThrowHelper.ThrowInvalidOperationException_SerializerPropertyNameConflict(this, jsonPropertyInfo);
-                        }
+                            if (jsonPropertyInfo.NameAsString == null)
+                            {
+                                ThrowHelper.ThrowInvalidOperationException_SerializerPropertyNameNull(this, jsonPropertyInfo);
+                            }
 
-                        jsonPropertyInfo.ClearUnusedValuesAfterAdd();
+                            // If the JsonPropertyNameAttribute or naming policy results in collisions, throw an exception.
+                            if (!propertyNames.Add(jsonPropertyInfo.NameUsedToCompareAsString))
+                            {
+                                ThrowHelper.ThrowInvalidOperationException_SerializerPropertyNameConflict(this, jsonPropertyInfo);
+                            }
+
+                            jsonPropertyInfo.ClearUnusedValuesAfterAdd();
+                        }
                     }
-                }
-            }
-            else if (ClassType == ClassType.Enumerable || ClassType == ClassType.Dictionary)
-            {
-                // Add a single property that maps to the class type so we can have policies applied.
-                JsonPropertyInfo jsonPropertyInfo = AddProperty(type, propertyInfo: null, type, options);
+                    break;
+                case ClassType.Enumerable:
+                case ClassType.Dictionary:
+                    // Add a single property that maps to the class type so we can have policies applied.
+                    JsonPropertyInfo policyProperty = AddPolicyProperty(type, options);
 
-                // Use the type from the property policy to get any late-bound concrete types (from an interface like IDictionary).
-                CreateObject = options.ClassMaterializerStrategy.CreateConstructor(jsonPropertyInfo.RuntimePropertyType);
+                    // Use the type from the property policy to get any late-bound concrete types (from an interface like IDictionary).
+                    CreateObject = options.ClassMaterializerStrategy.CreateConstructor(policyProperty.RuntimePropertyType);
 
-                // Create a ClassInfo that maps to the element type which is used for (de)serialization and policies.
-                Type elementType = GetElementType(type);
-
-                ElementClassInfo = options.GetOrAddClass(elementType);
-            }
-            else if (ClassType == ClassType.Value)
-            {
-                // Add a single property that maps to the class type so we can have policies applied.
-                AddProperty(type, propertyInfo: null, type, options);
-            }
-            else
-            {
-                Debug.Assert(ClassType == ClassType.Unknown);
-                // Do nothing. The type is typeof(object).
+                    // Create a ClassInfo that maps to the element type which is used for (de)serialization and policies.
+                    Type elementType = GetElementType(type);
+                    ElementClassInfo = options.GetOrAddClass(elementType);
+                    break;
+                case ClassType.Value:
+                case ClassType.Unknown:
+                    // Add a single property that maps to the class type so we can have policies applied.
+                    AddPolicyProperty(type, options);
+                    break;
+                default:
+                    Debug.Fail($"Unexpected class type: {ClassType}");
+                    break;
             }
         }
 
@@ -242,7 +242,7 @@ namespace System.Text.Json.Serialization
             {
                 if (propertyName.Length <= PropertyNameKeyLength ||
                     // We compare the whole name, although we could skip the first 6 bytes (but it's likely not any faster)
-                    propertyName.SequenceEqual((ReadOnlySpan<byte>)propertyRef.Info.CompareName))
+                    propertyName.SequenceEqual(propertyRef.Info.NameUsedToCompare))
                 {
                     info = propertyRef.Info;
                     return true;
@@ -319,11 +319,12 @@ namespace System.Text.Json.Serialization
 
                     if (propertyType.IsGenericType)
                     {
-                        if (GetClassType(propertyType) == ClassType.Dictionary)
+                        if (GetClassType(propertyType) == ClassType.Dictionary &&
+                            args.Length >= 2) // It is >= 2 in case there is a Dictionary<TKey, TValue, TSomeExtension>.
                         {
                             elementType = args[1];
                         }
-                        else
+                        else if (GetClassType(propertyType) == ClassType.Enumerable && args.Length >= 1) // It is >= 1 in case there is an IEnumerable<T, TSomeExtension>.
                         {
                             elementType = args[0];
                         }
@@ -331,7 +332,7 @@ namespace System.Text.Json.Serialization
                     else
                     {
                         // Unable to determine collection type; attempt to use object which will be used to create loosely-typed collection.
-                        return typeof(object);
+                        elementType = typeof(object);
                     }
                 }
             }
@@ -348,8 +349,8 @@ namespace System.Text.Json.Serialization
                 type = Nullable.GetUnderlyingType(type);
             }
 
-            // A Type is considered a value if it implements IConvertible or is a DateTimeOffset.
-            if (typeof(IConvertible).IsAssignableFrom(type) || type == typeof(DateTimeOffset))
+            // A Type is considered a value if it implements IConvertible or is a DateTimeOffset or JsonElement.
+            if (typeof(IConvertible).IsAssignableFrom(type) || type == typeof(DateTimeOffset) || type == typeof(JsonElement))
             {
                 return ClassType.Value;
             }

@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <ProjectGuid>{5F553243-042C-45C0-8E49-C739131E11C3}</ProjectGuid>
-    <Configurations>netcoreapp-Debug;netcoreapp-Release;uap-Windows_NT-Debug;uap-Windows_NT-Release;netstandard-Debug;netstandard-Release</Configurations>
+    <Configurations>netcoreapp-Debug;netcoreapp-Release;netstandard-Debug;netstandard-Release;uap-Windows_NT-Debug;uap-Windows_NT-Release</Configurations>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="$(CommonTestPath)\System\IO\WrappedMemoryStream.cs">
@@ -16,6 +16,7 @@
     <Compile Include="JsonDocumentTests.cs" />
     <Compile Include="JsonElementCloneTests.cs" />
     <Compile Include="JsonElementWriteTests.cs" />
+    <Compile Include="JsonEncodedTextTests.cs" />
     <Compile Include="JsonGuidTestData.cs" />
     <Compile Include="JsonNumberTestData.cs" />
     <Compile Include="JsonReaderStateAndOptionsTests.cs" />
@@ -28,6 +29,8 @@
     <Compile Include="Serialization\CyclicTests.cs" />
     <Compile Include="Serialization\DictionaryTests.cs" />
     <Compile Include="Serialization\EnumTests.cs" />
+    <Compile Include="Serialization\JsonElementTests.cs" />
+    <Compile Include="Serialization\ExceptionTests.cs" />
     <Compile Include="Serialization\Null.ReadTests.cs" />
     <Compile Include="Serialization\Null.WriteTests.cs" />
     <Compile Include="Serialization\Object.ReadTests.cs" />
@@ -44,10 +47,17 @@
     <Compile Include="Serialization\TestClasses.SimpleTestClass.cs" />
     <Compile Include="Serialization\TestClasses.SimpleTestClassWithNullables.cs" />
     <Compile Include="Serialization\TestClasses.SimpleTestClassWithObject.cs" />
+    <Compile Include="Serialization\TestClasses.SimpleTestClassWithObjectArrays.cs" />
+    <Compile Include="Serialization\TestClasses.SimpleTestClassWithSimpleObject.cs" />
     <Compile Include="Serialization\TestData.cs" />
     <Compile Include="Serialization\Value.ReadTests.cs" />
+    <Compile Include="Serialization\Value.ReadTests.GenericCollections.cs" />
+    <Compile Include="Serialization\Value.ReadTests.ImmutableCollections.cs" />
     <Compile Include="Serialization\Value.WriteTests.cs" />
+    <Compile Include="Serialization\Value.WriteTests.GenericCollections.cs" />
+    <Compile Include="Serialization\Value.WriteTests.ImmutableCollections.cs" />
     <Compile Include="TestCaseType.cs" />
+    <Compile Include="TestClasses.ClassWithComplexObjects.cs" />
     <Compile Include="Utf8JsonReaderTests.cs" />
     <Compile Include="Utf8JsonReaderTests.MultiSegment.cs" />
     <Compile Include="Utf8JsonReaderTests.TextEquals.cs" />
@@ -63,7 +73,7 @@
     </Compile>
   </ItemGroup>
   <ItemGroup>
-    <ReferenceFromRuntime Include="Newtonsoft.Json" />    
+    <ReferenceFromRuntime Include="Newtonsoft.Json" />
     <!-- Copy external dependency into the test output directory. -->
     <SupplementalTestData Include="$(RuntimePath)Newtonsoft.Json.dll" />
   </ItemGroup>
