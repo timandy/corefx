@@ -950,7 +950,9 @@ namespace System.Diagnostics.Tests
         {
             CreateDefaultProcess();
 
-            Assert.Equal(Path.GetFileNameWithoutExtension(RemoteExecutor.HostRunner), Path.GetFileNameWithoutExtension(_process.ProcessName), StringComparer.OrdinalIgnoreCase);
+            // Process.ProcessName drops the extension when it's exe. 
+            string processName = RemoteExecutor.HostRunner.EndsWith(".exe") ?_process.ProcessName : Path.GetFileNameWithoutExtension(_process.ProcessName);
+            Assert.Equal(Path.GetFileNameWithoutExtension(RemoteExecutor.HostRunner), processName, StringComparer.OrdinalIgnoreCase);
         }
 
         [Fact]
@@ -1919,15 +1921,16 @@ namespace System.Diagnostics.Tests
             Assert.True(p.HasExited);
         }
 
-        [ActiveIssue(37198)]
         [PlatformSpecific(TestPlatforms.AnyUnix)]
         [ActiveIssue(37054, TestPlatforms.OSX)]
         [Fact]
         public void LongProcessNamesAreSupported()
         {
+            // Alpine implements sleep as a symlink to the busybox executable.
+            // If we rename it, the program will no longer sleep.
             if (PlatformDetection.IsAlpine)
             {
-                return; // https://github.com/dotnet/corefx/issues/37054
+                return;
             }
 
             string programPath = GetProgramPath("sleep");
