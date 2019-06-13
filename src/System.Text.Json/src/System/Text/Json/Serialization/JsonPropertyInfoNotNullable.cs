@@ -1,11 +1,11 @@
-﻿// Licensed to the .NET Foundation under one or more agreements.
+// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
 using System.Collections.Generic;
 using System.Diagnostics;
 
-namespace System.Text.Json.Serialization
+namespace System.Text.Json
 {
     /// <summary>
     /// Represents a strongly-typed property that is not a <see cref="Nullable{T}"/>.
@@ -14,7 +14,7 @@ namespace System.Text.Json.Serialization
         JsonPropertyInfoCommon<TClass, TDeclaredProperty, TRuntimeProperty>
         where TRuntimeProperty : TDeclaredProperty
     {
-        public override void Read(JsonTokenType tokenType, JsonSerializerOptions options, ref ReadStack state, ref Utf8JsonReader reader)
+        public override void Read(JsonTokenType tokenType, ref ReadStack state, ref Utf8JsonReader reader)
         {
             Debug.Assert(ShouldDeserialize);
 
@@ -22,7 +22,7 @@ namespace System.Text.Json.Serialization
             {
                 // Forward the setter to the value-based JsonPropertyInfo.
                 JsonPropertyInfo propertyInfo = ElementClassInfo.GetPolicyProperty();
-                propertyInfo.ReadEnumerable(tokenType, options, ref state, ref reader);
+                propertyInfo.ReadEnumerable(tokenType, ref state, ref reader);
             }
             else
             {
@@ -43,25 +43,31 @@ namespace System.Text.Json.Serialization
                     return;
                 }
 
-                ThrowHelper.ThrowJsonException_DeserializeUnableToConvertValue(RuntimePropertyType, reader, state.PropertyPath);
+                ThrowHelper.ThrowJsonException_DeserializeUnableToConvertValue(RuntimePropertyType, reader, state.JsonPath);
             }
         }
 
         // If this method is changed, also change JsonPropertyInfoNullable.ReadEnumerable and JsonSerializer.ApplyObjectToEnumerable
-        public override void ReadEnumerable(JsonTokenType tokenType, JsonSerializerOptions options, ref ReadStack state, ref Utf8JsonReader reader)
+        public override void ReadEnumerable(JsonTokenType tokenType, ref ReadStack state, ref Utf8JsonReader reader)
         {
             Debug.Assert(ShouldDeserialize);
 
+            if (state.Current.KeyName == null && (state.Current.IsProcessingDictionary || state.Current.IsProcessingImmutableDictionary))
+            {
+                ThrowHelper.ThrowJsonException_DeserializeUnableToConvertValue(RuntimePropertyType, reader, state.JsonPath);
+                return;
+            }
+
             if (ValueConverter == null || !ValueConverter.TryRead(RuntimePropertyType, ref reader, out TRuntimeProperty value))
             {
-                ThrowHelper.ThrowJsonException_DeserializeUnableToConvertValue(RuntimePropertyType, reader, state.PropertyPath);
+                ThrowHelper.ThrowJsonException_DeserializeUnableToConvertValue(RuntimePropertyType, reader, state.JsonPath);
                 return;
             }
 
             JsonSerializer.ApplyValueToEnumerable(ref value, ref state, ref reader);
         }
 
-        public override void Write(JsonSerializerOptions options, ref WriteStackFrame current, Utf8JsonWriter writer)
+        public override void Write(ref WriteStackFrame current, Utf8JsonWriter writer)
         {
             Debug.Assert(current.Enumerator == null);
             Debug.Assert(ShouldSerialize);
@@ -78,18 +84,18 @@ namespace System.Text.Json.Serialization
 
             if (value == null)
             {
-                Debug.Assert(EscapedName != null);
+                Debug.Assert(EscapedName.HasValue);
 
                 if (!IgnoreNullValues)
                 {
-                    writer.WriteNull(EscapedName);
+                    writer.WriteNull(EscapedName.Value);
                 }
             }
             else if (ValueConverter != null)
             {
-                if (EscapedName != null)
+                if (EscapedName.HasValue)
                 {
-                    ValueConverter.Write(EscapedName, value, writer);
+                    ValueConverter.Write(EscapedName.Value, value, writer);
                 }
                 else
                 {
@@ -98,13 +104,13 @@ namespace System.Text.Json.Serialization
             }
         }
 
-        public override void WriteDictionary(JsonSerializerOptions options, ref WriteStackFrame current, Utf8JsonWriter writer)
+        public override void WriteDictionary(ref WriteStackFrame current, Utf8JsonWriter writer)
         {
             Debug.Assert(ShouldSerialize);
-            JsonSerializer.WriteDictionary(ValueConverter, options, ref current, writer);
+            JsonSerializer.WriteDictionary(ValueConverter, Options, ref current, writer);
         }
 
-        public override void WriteEnumerable(JsonSerializerOptions options, ref WriteStackFrame current, Utf8JsonWriter writer)
+        public override void WriteEnumerable(ref WriteStackFrame current, Utf8JsonWriter writer)
         {
             Debug.Assert(ShouldSerialize);
 

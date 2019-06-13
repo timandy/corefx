@@ -15,6 +15,13 @@ namespace System.Text.Json.Serialization.Tests
         void Verify();
     }
 
+    public enum SampleByteEnum : byte
+    {
+        One = 0,
+        Two = 1,
+        Max = byte.MaxValue
+    }
+
     public enum SampleEnum
     {
         One = 1,
@@ -27,8 +34,17 @@ namespace System.Text.Json.Serialization.Tests
         Max = long.MaxValue
     }
 
+    public enum SampleUInt32Enum : UInt32
+    {
+        One = 0,
+        Two = 1,
+        Max = UInt32.MaxValue
+    }
+
     public enum SampleUInt64Enum : ulong
     {
+        One = 0,
+        Two = 1,
         Max = ulong.MaxValue
     }
 
@@ -385,21 +401,6 @@ namespace System.Text.Json.Serialization.Tests
             Assert.Equal("World", MyData[1]);
             Assert.Equal(2, MyData.Length);
         }
-    }
-
-    public class TestClassWithCycle
-    {
-        public TestClassWithCycle Parent { get; set; }
-
-        public void Initialize()
-        {
-            Parent = this;
-        }
-    }
-
-    public class TestClassWithArrayOfElementsOfTheSameClass
-    {
-        public TestClassWithArrayOfElementsOfTheSameClass[] Array { get; set; }
     }
 
     public class TestClassWithGenericList : ITestClass
