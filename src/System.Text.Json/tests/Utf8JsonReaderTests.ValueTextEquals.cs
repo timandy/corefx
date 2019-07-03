@@ -578,7 +578,6 @@ namespace System.Text.Json.Tests
         }
 
         [Theory]
-        [ActiveIssue(38178)]
         [InlineData("\"hello\"", new char[1] { (char)0xDC01 })]    // low surrogate - invalid
         [InlineData("\"hello\"", new char[1] { (char)0xD801 })]    // high surrogate - missing pair
         public static void InvalidUTF16Search(string jsonString, char[] lookup)
@@ -629,12 +628,11 @@ namespace System.Text.Json.Tests
             Assert.False(json.ValueTextEquals(lookup));
         }
 
-        [ActiveIssue(38221)]
         [ConditionalFact(nameof(IsX64))]
         [OuterLoop]
         public static void LookupOverflow()
         {
-            char[] jsonString = new char[400_000_002];
+            char[] jsonString = new char[800_000_002];
 
             jsonString.AsSpan().Fill('a');
             jsonString[0] = '"';

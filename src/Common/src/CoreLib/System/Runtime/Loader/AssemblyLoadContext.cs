@@ -248,11 +248,7 @@ namespace System.Runtime.Loader
 
                 foreach (WeakReference<AssemblyLoadContext> weakAlc in alcList)
                 {
-                    AssemblyLoadContext? alc = null;
-
-                    weakAlc.TryGetTarget(out alc);
-
-                    if (alc != null)
+                    if (weakAlc.TryGetTarget(out AssemblyLoadContext? alc))
                     {
                         yield return alc;
                     }
@@ -279,6 +275,7 @@ namespace System.Runtime.Loader
             return null;
         }
 
+#if !CORERT
         [System.Security.DynamicSecurityMethod] // Methods containing StackCrawlMark local var has to be marked DynamicSecurityMethod
         public Assembly LoadFromAssemblyName(AssemblyName assemblyName)
         {
@@ -289,6 +286,7 @@ namespace System.Runtime.Loader
             StackCrawlMark stackMark = StackCrawlMark.LookForMyCaller;
             return Assembly.Load(assemblyName, ref stackMark, this);
         }
+#endif
 
         // These methods load assemblies into the current AssemblyLoadContext
         // They may be used in the implementation of an AssemblyLoadContext derivation
@@ -428,7 +426,7 @@ namespace System.Runtime.Loader
             {
                 foreach (var alcAlive in s_allContexts)
                 {
-                    if (alcAlive.Value.TryGetTarget(out AssemblyLoadContext alc))
+                    if (alcAlive.Value.TryGetTarget(out AssemblyLoadContext? alc))
                     {
                         alc.RaiseUnloadEvent();
                     }
