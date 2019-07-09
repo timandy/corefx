@@ -24,6 +24,7 @@ using System.Threading.Tasks;
 using System.Diagnostics.Tracing;
 using System.Text;
 using System.Net;
+using System.Net.Sockets;
 
 /// <summary>
 /// Simple HttpClient stress app that launches Kestrel in-proc and runs many concurrent requests of varying types against it.
@@ -39,6 +40,7 @@ public class Program
         cmd.AddOption(new Option("-ops", "Indices of the operations to use") { Argument = new Argument<int[]>("space-delimited indices", null) });
         cmd.AddOption(new Option("-trace", "Enable Microsoft-System-Net-Http tracing.") { Argument = new Argument<string>("\"console\" or path") });
         cmd.AddOption(new Option("-aspnetlog", "Enable ASP.NET warning and error logging.") { Argument = new Argument<bool>("enable", false) });
+        cmd.AddOption(new Option("-listOps", "List available options.") { Argument = new Argument<bool>("enable", false) });
 
         ParseResult cmdline = cmd.Parse(args);
         if (cmdline.Errors.Count > 0)
@@ -57,17 +59,35 @@ public class Program
             cmdline.ValueForOption<Version>("-http"),
             cmdline.ValueForOption<int[]>("-ops"),
             cmdline.HasOption("-trace") ? cmdline.ValueForOption<string>("-trace") : null,
-            cmdline.ValueForOption<bool>("-aspnetlog"));
+            cmdline.ValueForOption<bool>("-aspnetlog"),
+            cmdline.ValueForOption<bool>("-listOps"));
     }
 
-    private static void Run(int concurrentRequests, int contentLength, Version httpVersion, int[] opIndices, string logPath, bool aspnetLog)
+    private static void Run(int concurrentRequests, int contentLength, Version httpVersion, int[] opIndices, string logPath, bool aspnetLog, bool listOps)
     {
         // Handle command-line arguments.
         EventListener listener =
             logPath == null ? null :
             new HttpEventListener(logPath != "console" ? new StreamWriter(logPath) { AutoFlush = true } : null);
+        if (listener == null)
+        {
+            // If no command-line requested logging, enable the user to press 'L' to enable logging to the console
+            // during execution, so that it can be done just-in-time when something goes awry.
+            new Thread(() =>
+            {
+                while (true)
+                {
+                    if (Console.ReadKey(intercept: true).Key == ConsoleKey.L)
+                    {
+                        listener = new HttpEventListener();
+                        break;
+                    }
+                }
+            }) { IsBackground = true }.Start();
+        }
 
         string content = string.Concat(Enumerable.Repeat("1234567890", contentLength / 10));
+        byte[] contentBytes = Encoding.ASCII.GetBytes(content);
         const int DisplayIntervalMilliseconds = 1000;
         const int HttpsPort = 5001;
         const string LocalhostName = "localhost";
@@ -182,7 +202,17 @@ public class Program
             ("POST Duplex",
             async client =>
             {
-                using (HttpResponseMessage m = await client.PostAsync(serverUri + "/duplex", new StringContent(content)))
+                using (HttpResponseMessage m = await client.SendAsync(new HttpRequestMessage(HttpMethod.Post, serverUri + "/duplex") { Content = new StringContent(content), Version = httpVersion }, HttpCompletionOption.ResponseHeadersRead))
+                {
+                    ValidateResponse(m);
+                    return await m.Content.ReadAsStringAsync();
+                }
+            }),
+
+            ("POST Duplex Slow",
+            async client =>
+            {
+                using (HttpResponseMessage m = await client.SendAsync(new HttpRequestMessage(HttpMethod.Post, serverUri + "/duplexSlow") { Content = new ByteAtATimeNoLengthContent(contentBytes), Version = httpVersion }, HttpCompletionOption.ResponseHeadersRead))
                 {
                     ValidateResponse(m);
                     return await m.Content.ReadAsStringAsync();
@@ -192,9 +222,8 @@ public class Program
             ("POST ExpectContinue",
             async client =>
             {
-                using (var req = new HttpRequestMessage(HttpMethod.Post, serverUri) { Version = httpVersion })
+                using (var req = new HttpRequestMessage(HttpMethod.Post, serverUri) { Content = new StringContent(content), Version = httpVersion })
                 {
-                    req.Content = new StringContent(content);
                     req.Headers.ExpectContinue = true;
                     using (HttpResponseMessage m = await client.SendAsync(req, HttpCompletionOption.ResponseHeadersRead))
                     {
@@ -225,7 +254,42 @@ public class Program
                     catch (OperationCanceledException) { return null; }
                 }
             }),
+
+            ("HEAD",
+            async client =>
+            {
+                using (HttpResponseMessage m = await client.SendAsync(new HttpRequestMessage(HttpMethod.Head, serverUri) { Version = httpVersion }))
+                {
+                    ValidateResponse(m);
+                    if (m.Content.Headers.ContentLength != contentLength)
+                    {
+                        throw new Exception($"Expected {contentLength}, got {m.Content.Headers.ContentLength}");
+                    }
+                    string r = await m.Content.ReadAsStringAsync();
+                    return r.Length == 0 ? null : r;
+                }
+            }),
+
+            ("PUT",
+            async client =>
+            {
+                using (HttpResponseMessage m = await client.PutAsync(serverUri, new StringContent(content)))
+                {
+                    ValidateResponse(m);
+                    string r = await m.Content.ReadAsStringAsync();
+                    return r == "" ? content : throw new Exception("Got unexpected response: {r}");
+                }
+            }),
         };
+
+        if (listOps)
+        {
+            for (int i = 0; i < clientOperations.Length; i++)
+            {
+                Console.WriteLine($"{i} = {clientOperations[i].Item1}");
+            }
+            return;
+        }
 
         if (opIndices != null)
         {
@@ -273,6 +337,7 @@ public class Program
             // Set up how each request should be handled by the server.
             .Configure(app =>
             {
+                var head = new[] { "HEAD" };
                 app.UseRouting();
                 app.UseEndpoints(endpoints =>
                 {
@@ -320,6 +385,26 @@ public class Program
                         // Echos back the requested content in a full duplex manner.
                         await context.Request.Body.CopyToAsync(context.Response.Body);
                     });
+                    endpoints.MapPost("/duplexSlow", async context =>
+                    {
+                        // Echos back the requested content in a full duplex manner, but one byte at a time.
+                        var buffer = new byte[1];
+                        while ((await context.Request.Body.ReadAsync(buffer)) != 0)
+                        {
+                            await context.Response.Body.WriteAsync(buffer);
+                        }
+                    });
+                    endpoints.MapMethods("/", head, context =>
+                    {
+                        // Just set the content length on the response.
+                        context.Response.Headers.ContentLength = contentLength;
+                        return Task.CompletedTask;
+                    });
+                    endpoints.MapPut("/", async context =>
+                    {
+                        // Read the full request but don't send back a response body.
+                        await context.Request.Body.CopyToAsync(Stream.Null);
+                    });
                 });
             })
             .Build()
@@ -339,6 +424,8 @@ public class Program
             // Track all successes and failures
             long total = 0;
             long[] success = new long[clientOperations.Length], fail = new long[clientOperations.Length];
+            long reuseAddressFailure = 0;
+
             void Increment(ref long counter)
             {
                 Interlocked.Increment(ref counter);
@@ -357,6 +444,14 @@ public class Program
                         Console.Write("[" + DateTime.Now + "]");
                         Console.ResetColor();
                         Console.WriteLine(" Total: " + total.ToString("N0"));
+
+                        if (reuseAddressFailure > 0)
+                        {
+                            Console.ForegroundColor = ConsoleColor.DarkRed;
+                            Console.WriteLine("~~ Reuse address failures: " + reuseAddressFailure.ToString("N0") + "~~");
+                            Console.ResetColor();
+                        }
+
                         for (int i = 0; i < clientOperations.Length; i++)
                         {
                             Console.ForegroundColor = ConsoleColor.Cyan;
@@ -398,13 +493,21 @@ public class Program
                     catch (Exception e)
                     {
                         Increment(ref fail[opIndex]);
-                        lock (Console.Out)
+
+                        if (e is HttpRequestException hre && hre.InnerException is SocketException se && se.SocketErrorCode == SocketError.AddressAlreadyInUse)
                         {
-                            Console.ForegroundColor = ConsoleColor.Yellow;
-                            Console.WriteLine($"Error from iteration {i} ({operation}) in task {taskNum} with {success.Sum()} successes / {fail.Sum()} fails:");
-                            Console.ResetColor();
-                            Console.WriteLine(e);
-                            Console.WriteLine();
+                            Interlocked.Increment(ref reuseAddressFailure);
+                        }
+                        else
+                        {
+                            lock (Console.Out)
+                            {
+                                Console.ForegroundColor = ConsoleColor.Yellow;
+                                Console.WriteLine($"Error from iteration {i} ({operation}) in task {taskNum} with {success.Sum()} successes / {fail.Sum()} fails:");
+                                Console.ResetColor();
+                                Console.WriteLine(e);
+                                Console.WriteLine();
+                            }
                         }
                     }
                 }
@@ -439,6 +542,28 @@ public class Program
         {
             length = 42;
             return true;
+        }
+    }
+
+    private sealed class ByteAtATimeNoLengthContent : HttpContent
+    {
+        private readonly byte[] _buffer;
+
+        public ByteAtATimeNoLengthContent(byte[] buffer) => _buffer = buffer;
+
+        protected override async Task SerializeToStreamAsync(Stream stream, TransportContext context)
+        {
+            for (int i = 0; i < _buffer.Length; i++)
+            {
+                await stream.WriteAsync(_buffer.AsMemory(i, 1));
+                await stream.FlushAsync();
+            }
+        }
+
+        protected override bool TryComputeLength(out long length)
+        {
+            length = 0;
+            return false;
         }
     }
 
