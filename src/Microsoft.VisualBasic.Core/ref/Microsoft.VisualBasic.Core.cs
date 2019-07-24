@@ -412,6 +412,24 @@ namespace Microsoft.VisualBasic
         public static void Write(int FileNumber, params object[] Output) { }
         public static void WriteLine(int FileNumber, params object[] Output) { }
     }
+    [Microsoft.VisualBasic.CompilerServices.StandardModuleAttribute]
+    public sealed class Financial
+    {
+        internal Financial() { }
+        public static double DDB(double Cost, double Salvage, double Life, double Period, double Factor = 2.0) { throw null; }
+        public static double FV(double Rate, double NPer, double Pmt, double PV = 0, DueDate Due = DueDate.EndOfPeriod) { throw null; }
+        public static double IPmt(double Rate, double Per, double NPer, double PV, double FV = 0, DueDate Due = DueDate.EndOfPeriod) { throw null; }
+        public static double IRR(ref double[] ValueArray, double Guess = 0.1) { throw null; }
+        public static double MIRR(ref double[] ValueArray, double FinanceRate, double ReinvestRate) { throw null; }
+        public static double NPer(double Rate, double Pmt, double PV, double FV = 0, DueDate Due = DueDate.EndOfPeriod) { throw null; }
+        public static double NPV(double Rate, ref double[] ValueArray) { throw null; }
+        public static double Pmt(double Rate, double NPer, double PV, double FV = 0, DueDate Due = DueDate.EndOfPeriod) { throw null; }
+        public static double PPmt(double Rate, double Per, double NPer, double PV, double FV = 0, DueDate Due = DueDate.EndOfPeriod) { throw null; }
+        public static double PV(double Rate, double NPer, double Pmt, double FV = 0, DueDate Due = DueDate.EndOfPeriod) { throw null; }
+        public static double Rate(double NPer, double Pmt, double PV, double FV = 0, DueDate Due = DueDate.EndOfPeriod, double Guess = 0.1) { throw null; }
+        public static double SLN(double Cost, double Salvage, double Life) { throw null; }
+        public static double SYD(double Cost, double Salvage, double Life, double Period) { throw null; }
+    }
     public enum FirstDayOfWeek
     {
         Friday = 6,
@@ -463,8 +481,11 @@ namespace Microsoft.VisualBasic
         internal Interaction() { }
         public static void Beep() { }
         public static object CallByName(object ObjectRef, string ProcName, CallType UseCallType, params object[] Args) { throw null; }
+        public static object Choose(double Index, params object[] Choice) { throw null; }
         public static object CreateObject(string ProgId, string ServerName = "") { throw null; }
         public static object IIf(bool Expression, object TruePart, object FalsePart) { throw null; }
+        public static string Partition(long Number, long Start, long Stop, long Interval) { throw null; }
+        public static object Switch(params object[] VarExpr) { throw null; }
     }
     public enum MsgBoxResult
     {

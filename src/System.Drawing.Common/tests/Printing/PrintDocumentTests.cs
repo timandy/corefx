@@ -63,7 +63,8 @@ namespace System.Drawing.Printing.Tests
             }
         }
 
-        [Fact]
+        [ConditionalFact(Helpers.IsDrawingSupported)]
+        [ActiveIssue(39381)]
         [ActiveIssue(20884, TestPlatforms.AnyUnix)]
         public void DefaultPageSettings_Null_ReturnsExpected()
         {
@@ -257,7 +258,7 @@ namespace System.Drawing.Printing.Tests
                     break;
             }
 
-            Assert.Equal(PrinterResolutionKind.Custom, pageSettings.PrinterResolution.Kind);
+            Assert.True(Enum.IsDefined(typeof(PrinterResolutionKind), pageSettings.PrinterResolution.Kind));
             Assert.True(pageSettings.PrinterSettings.IsDefaultPrinter);
         }
 

@@ -722,7 +722,7 @@ namespace System.Text.Json.Tests
         [Fact]
         public static void InvalidConversion()
         {
-            string jsonString = "[\"stringValue\", true, /* Comment within */ 1234] // Comment outside";
+            string jsonString = "[\"stringValue\", true, /* Comment within */ 1234, null] // Comment outside";
             byte[] dataUtf8 = Encoding.UTF8.GetBytes(jsonString);
 
             var state = new JsonReaderState(options: new JsonReaderOptions { CommentHandling = JsonCommentHandling.Allow });
@@ -731,13 +731,14 @@ namespace System.Text.Json.Tests
             {
                 if (json.TokenType != JsonTokenType.String)
                 {
-                    try
+                    if (json.TokenType == JsonTokenType.Null)
                     {
-                        string value = json.GetString();
-                        Assert.True(false, "Expected GetString to throw InvalidOperationException due to mismatch token type.");
+                        Assert.Null(json.GetString());
                     }
-                    catch (InvalidOperationException)
-                    { }
+                    else
+                    {
+                        JsonTestHelper.AssertThrows<InvalidOperationException>(json, (jsonReader) => jsonReader.GetString());
+                    }
 
                     try
                     {
@@ -1346,145 +1347,6 @@ namespace System.Text.Json.Tests
                 }
             }
             Assert.True(commentFound);
-        }
-
-        [Theory]
-        [MemberData(nameof(JsonDateTimeTestData.ValidISO8601Tests), MemberType = typeof(JsonDateTimeTestData))]
-        public static void TestingStringsConversionToDateTime(string jsonString, string expectedString)
-        {
-            byte[] dataUtf8 = Encoding.UTF8.GetBytes(jsonString);
-
-            var json = new Utf8JsonReader(dataUtf8, isFinalBlock: true, state: default);
-            while (json.Read())
-            {
-                if (json.TokenType == JsonTokenType.String)
-                {
-                    DateTime expected = DateTime.Parse(expectedString);
-
-                    Assert.True(json.TryGetDateTime(out DateTime actual));
-                    Assert.Equal(expected, actual);
-
-                    Assert.Equal(expected, json.GetDateTime());
-                }
-            }
-
-            Assert.Equal(dataUtf8.Length, json.BytesConsumed);
-        }
-
-        [Theory]
-        [MemberData(nameof(JsonDateTimeTestData.ValidISO8601Tests), MemberType = typeof(JsonDateTimeTestData))]
-        public static void TestingStringsConversionToDateTimeOffset(string jsonString, string expectedString)
-        {
-            byte[] dataUtf8 = Encoding.UTF8.GetBytes(jsonString);
-
-            var json = new Utf8JsonReader(dataUtf8, isFinalBlock: true, state: default);
-            while (json.Read())
-            {
-                if (json.TokenType == JsonTokenType.String)
-                {
-                    DateTimeOffset expected = DateTimeOffset.Parse(expectedString);
-
-                    Assert.True(json.TryGetDateTimeOffset(out DateTimeOffset actual));
-                    Assert.Equal(expected, actual);
-
-                    Assert.Equal(expected, json.GetDateTimeOffset());
-                }
-            }
-
-            Assert.Equal(dataUtf8.Length, json.BytesConsumed);
-        }
-
-        [Theory]
-        [MemberData(nameof(JsonDateTimeTestData.ValidISO8601TestsWithUtcOffset), MemberType = typeof(JsonDateTimeTestData))]
-        public static void TestingStringsWithUTCOffsetToDateTime(string jsonString, string expectedString)
-        {
-            byte[] dataUtf8 = Encoding.UTF8.GetBytes(jsonString);
-
-            var json = new Utf8JsonReader(dataUtf8, isFinalBlock: true, state: default);
-            while (json.Read())
-            {
-                if (json.TokenType == JsonTokenType.String)
-                {
-                    DateTime expected = DateTime.ParseExact(expectedString, "O", CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
-
-                    Assert.True(json.TryGetDateTime(out DateTime actual));
-                    Assert.Equal(expected, actual);
-
-                    Assert.Equal(expected, json.GetDateTime());
-                }
-            }
-
-            Assert.Equal(dataUtf8.Length, json.BytesConsumed);
-        }
-
-        [Theory]
-        [MemberData(nameof(JsonDateTimeTestData.ValidISO8601TestsWithUtcOffset), MemberType = typeof(JsonDateTimeTestData))]
-        public static void TestingStringsWithUTCOffsetToDateTimeOffset(string jsonString, string expectedString)
-        {
-            byte[] dataUtf8 = Encoding.UTF8.GetBytes(jsonString);
-
-            var json = new Utf8JsonReader(dataUtf8, isFinalBlock: true, state: default);
-            while (json.Read())
-            {
-                if (json.TokenType == JsonTokenType.String)
-                {
-                    DateTimeOffset expected = DateTimeOffset.ParseExact(expectedString, "O", CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
-
-                    Assert.True(json.TryGetDateTimeOffset(out DateTimeOffset actual));
-                    Assert.Equal(expected, actual);
-
-                    Assert.Equal(expected, json.GetDateTimeOffset());
-                }
-            }
-
-            Assert.Equal(dataUtf8.Length, json.BytesConsumed);
-        }
-
-        [Theory]
-        [MemberData(nameof(JsonDateTimeTestData.InvalidISO8601Tests), MemberType = typeof(JsonDateTimeTestData))]
-        public static void TestingStringsInvalidConversionToDateTime(string jsonString)
-        {
-            byte[] dataUtf8 = Encoding.UTF8.GetBytes(jsonString);
-
-            var json = new Utf8JsonReader(dataUtf8, isFinalBlock: true, state: default);
-            while (json.Read())
-            {
-                Assert.False(json.TryGetDateTime(out DateTime actualDateTime));
-                Assert.Equal(default, actualDateTime);
-
-                try
-                {
-                    DateTime value = json.GetDateTime();
-                    Assert.True(false, "Expected GetDateTime to throw FormatException due to invalid ISO 8601 input.");
-                }
-                catch (FormatException)
-                { }
-            }
-        }
-
-        [Theory]
-        [MemberData(nameof(JsonDateTimeTestData.InvalidISO8601Tests), MemberType = typeof(JsonDateTimeTestData))]
-        public static void TestingStringsInvalidConversionToDateTimeOffset(string jsonString)
-        {
-            byte[] dataUtf8 = Encoding.UTF8.GetBytes(jsonString);
-
-            var json = new Utf8JsonReader(dataUtf8, isFinalBlock: true, state: default);
-            while (json.Read())
-            {
-                if (json.TokenType == JsonTokenType.String)
-                {
-                    Assert.False(json.TryGetDateTimeOffset(out DateTimeOffset actualDateTime));
-                    Assert.Equal(default, actualDateTime);
-
-                    try
-                    {
-                        DateTimeOffset value = json.GetDateTimeOffset();
-                        Assert.True(false, "Expected GetDateTimeOffset to throw FormatException due to invalid ISO 8601 input.");
-                    }
-                    catch (FormatException)
-                    { }
-                }
-            }
         }
 
         [Theory]
