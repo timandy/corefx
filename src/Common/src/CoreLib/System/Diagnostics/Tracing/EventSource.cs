@@ -2518,7 +2518,7 @@ namespace System.Diagnostics.Tracing
             return eventData.Parameters[parameterId].ParameterType;
         }
 
-        private static readonly bool m_EventSourcePreventRecursion = false;
+        private const bool m_EventSourcePreventRecursion = false;
 #else
         private int GetParameterCount(EventMetadata eventData)
         {
@@ -5519,7 +5519,7 @@ namespace System.Diagnostics.Tracing
         {
             if (this.channelTab == null)
             {
-                return new ulong[0];
+                return Array.Empty<ulong>();
             }
 
             // We create an array indexed by the channel id for fast look up.
