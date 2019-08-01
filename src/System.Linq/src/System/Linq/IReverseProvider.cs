@@ -4,7 +4,7 @@
 
 using System.Collections.Generic;
 
-namespace System.Linq
+namespace System.LinqCore
 {
     internal interface IReverseProvider<TElement> : IEnumerable<TElement>
     {

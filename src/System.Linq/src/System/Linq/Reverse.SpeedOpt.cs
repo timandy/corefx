@@ -5,7 +5,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
-using static System.Linq.Utilities;
+using static System.LinqCore.Utilities;
 
 namespace System.LinqCore
 {
