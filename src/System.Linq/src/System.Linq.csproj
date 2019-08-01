@@ -53,6 +53,7 @@
     <Compile Include="System\Linq\Range.SpeedOpt.cs" />
     <Compile Include="System\Linq\Repeat.SpeedOpt.cs" />
     <Compile Include="System\Linq\Reverse.SpeedOpt.cs" />
+    <Compile Include="System\Linq\ReverseOld.cs" />
     <Compile Include="System\Linq\Select.SpeedOpt.cs" />
     <Compile Include="System\Linq\SelectMany.SpeedOpt.cs" />
     <Compile Include="System\Linq\Skip.SpeedOpt.cs" />
