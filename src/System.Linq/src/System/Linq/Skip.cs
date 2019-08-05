@@ -125,6 +125,21 @@ namespace System.LinqCore
                 : SkipLastEnumerableFactory(source, count);
         }
 
+        public static IEnumerable<TSource> SkipLastOld<TSource>(this IEnumerable<TSource> source, int count)
+        {
+            if (source == null)
+            {
+                ThrowHelper.ThrowArgumentNullException(ExceptionArgument.source);
+            }
+
+            if (count <= 0)
+            {
+                return source.Skip(0);
+            }
+
+            return SkipLastIterator(source, count);
+        }
+
         private static IEnumerable<TSource> SkipLastIterator<TSource>(IEnumerable<TSource> source, int count)
         {
             Debug.Assert(source != null);
@@ -142,8 +157,8 @@ namespace System.LinqCore
                         {
                             yield return queue.Dequeue();
                             queue.Enqueue(e.Current);
-                        }
-                        while (e.MoveNext());
+                        } while (e.MoveNext());
+
                         break;
                     }
                     else
