@@ -26,7 +26,6 @@ namespace System.Drawing
         private int _id;
 #endif
 
-        [SuppressMessage("Microsoft.Security", "CA2106:SecureAsserts")]
         private void SetNativeFamily(IntPtr family)
         {
             Debug.Assert(_nativeFamily == IntPtr.Zero, "Setting GDI+ native font family when already initialized.");
@@ -66,7 +65,7 @@ namespace System.Drawing
         /// </summary>
         public FontFamily(string name, FontCollection fontCollection) => CreateFontFamily(name, fontCollection);
 
-        // Creates the native font family object.  
+        // Creates the native font family object.
         // Note: GDI+ creates singleton font family objects (from the corresponding font file) and reference count them.
         private void CreateFontFamily(string name, FontCollection fontCollection)
         {

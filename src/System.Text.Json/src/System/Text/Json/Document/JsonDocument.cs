@@ -964,7 +964,7 @@ namespace System.Text.Json
 
         private static void Parse(
             ReadOnlySpan<byte> utf8JsonSpan,
-            Utf8JsonReader reader,
+            JsonReaderOptions readerOptions,
             ref MetadataDb database,
             ref StackRowStack stack)
         {
@@ -973,11 +973,16 @@ namespace System.Text.Json
             int numberOfRowsForMembers = 0;
             int numberOfRowsForValues = 0;
 
+            Utf8JsonReader reader = new Utf8JsonReader(
+                utf8JsonSpan,
+                isFinalBlock: true,
+                new JsonReaderState(options: readerOptions));
+
             while (reader.Read())
             {
                 JsonTokenType tokenType = reader.TokenType;
 
-                // Since the input payload is contained within a Span, 
+                // Since the input payload is contained within a Span,
                 // token start index can never be larger than int.MaxValue (i.e. utf8JsonSpan.Length).
                 Debug.Assert(reader.TokenStartIndex <= int.MaxValue);
                 int tokenStart = (int)reader.TokenStartIndex;

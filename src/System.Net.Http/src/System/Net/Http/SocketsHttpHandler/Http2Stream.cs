@@ -1,4 +1,4 @@
-﻿// Licensed to the .NET Foundation under one or more agreements.
+// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
@@ -47,9 +47,13 @@ namespace System.Net.Http
             private Exception _resetException;
             private bool _canRetry;             // if _resetException != null, this indicates the stream was refused and so the request is retryable
 
+            // This flag indicates that, per section 8.1 of the RFC, the server completed the response and then sent a RST_STREAM with error = NO_ERROR.
+            // This is a signal to stop sending the request body, but the request is still considered successful.
+            private bool _requestBodyAbandoned;
+
             /// <summary>
             /// The core logic for the IValueTaskSource implementation.
-            /// 
+            ///
             /// Thread-safety:
             /// _waitSource is used to coordinate between a producer indicating that something is available to process (either the connection's event loop
             /// or a cancellation request) and a consumer doing that processing.  There must only ever be a single consumer, namely this stream reading
@@ -111,6 +115,13 @@ namespace System.Net.Http
                 {
                     // Create this here because it can be canceled before SendRequestBodyAsync is even called.
                     _requestBodyCancellationSource = new CancellationTokenSource();
+
+                    if (_request.HasHeaders && _request.Headers.ExpectContinue == true)
+                    {
+                        // Create a TCS for handling Expect: 100-continue semantics. See WaitFor100ContinueAsync.
+                        // Note we need to create this in the constructor, because we can receive a 100 Continue response at any time after the constructor finishes.
+                        _expect100ContinueWaiter = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+                    }
                 }
 
                 if (NetEventSource.IsEnabled) Trace($"{request}, {nameof(initialWindowSize)}={initialWindowSize}");
@@ -150,7 +161,7 @@ namespace System.Net.Http
                 try
                 {
                     bool sendRequestContent = true;
-                    if (_request.HasHeaders && _request.Headers.ExpectContinue == true)
+                    if (_expect100ContinueWaiter != null)
                     {
                         sendRequestContent = await WaitFor100ContinueAsync(_requestBodyCancellationToken).ConfigureAwait(false);
                     }
@@ -169,45 +180,80 @@ namespace System.Net.Http
                 {
                     if (NetEventSource.IsEnabled) Trace($"Failed to send request body: {e}");
 
-                    // Cancel the stream before we set _requestCompletionState below.
-                    // Otherwise, a response stream reader may race with the actual Cancel.
-                    Cancel();
+                    bool signalWaiter = false;
+                    bool sendReset = false;
 
+                    Debug.Assert(!Monitor.IsEntered(SyncObject));
                     lock (SyncObject)
                     {
                         Debug.Assert(_requestCompletionState == StreamCompletionState.InProgress, $"Request already completed with state={_requestCompletionState}");
 
+                        if (_requestBodyAbandoned)
+                        {
+                            // See comments on _requestBodyAbandoned.
+                            // In this case, the request is still considered successful and we do not want to send a RST_STREAM,
+                            // and we also don't want to propagate any error to the caller, in particular for non-duplex scenarios.
+                            Debug.Assert(_responseCompletionState == StreamCompletionState.Completed);
+                            _requestCompletionState = StreamCompletionState.Completed;
+                            Complete();
+                            return;
+                        }
+
+                        // This should not cause RST_STREAM to be sent because the request is still marked as in progress.
+                        (signalWaiter, sendReset) = CancelResponseBody();
+                        Debug.Assert(!sendReset);
+
                         _requestCompletionState = StreamCompletionState.Failed;
+                        sendReset = true;
+                        Complete();
+                    }
 
-                        // Cancel above should ensure that the response is either Completed or Failed now.
-                        Debug.Assert(_responseCompletionState != StreamCompletionState.InProgress);
+                    if (sendReset)
+                    {
+                        SendReset();
+                    }
 
-                        Reset();
+                    if (signalWaiter)
+                    {
+                        _waitSource.SetResult(true);
                     }
 
                     throw;
                 }
 
-                lock (SyncObject)
+                // New scope here to avoid variable name conflict on "sendReset"
                 {
-                    Debug.Assert(_requestCompletionState == StreamCompletionState.InProgress, $"Request already completed with state={_requestCompletionState}");
-
-                    _requestCompletionState = StreamCompletionState.Completed;
-                    if (_responseCompletionState == StreamCompletionState.Failed)
+                    Debug.Assert(!Monitor.IsEntered(SyncObject));
+                    bool sendReset = false;
+                    lock (SyncObject)
                     {
-                        // Note, we can reach this point if the response stream failed but cancellation didn't propagate before we finished.
-                        Reset();
+                        Debug.Assert(_requestCompletionState == StreamCompletionState.InProgress, $"Request already completed with state={_requestCompletionState}");
+
+                        _requestCompletionState = StreamCompletionState.Completed;
+                        if (_responseCompletionState == StreamCompletionState.Failed)
+                        {
+                            // Note, we can reach this point if the response stream failed but cancellation didn't propagate before we finished.
+                            sendReset = true;
+                            Complete();
+                        }
+                        else
+                        {
+                            if (_responseCompletionState == StreamCompletionState.Completed)
+                            {
+                                Complete();
+                            }
+                        }
+                    }
+
+                    if (sendReset)
+                    {
+                        SendReset();
                     }
                     else
                     {
                         // Send EndStream asynchronously and without cancellation.
                         // If this fails, it means that the connection is aborting and we will be reset.
                         _connection.LogExceptions(_connection.SendEndStreamAsync(_streamId));
-
-                        if (_responseCompletionState == StreamCompletionState.Completed)
-                        {
-                            Complete();
-                        }
                     }
                 }
             }
@@ -221,14 +267,14 @@ namespace System.Net.Http
                 Debug.Assert(_request.Content != null);
                 if (NetEventSource.IsEnabled) Trace($"Waiting to send request body content for 100-Continue.");
 
-                // Create a TCS that will complete when one of two things occurs:
+                // use TCS created in constructor. It will complete when one of two things occurs:
                 // 1. if a timer fires before we receive the relevant response from the server.
                 // 2. if we receive the relevant response from the server before a timer fires.
                 // In the first case, we could run this continuation synchronously, but in the latter, we shouldn't,
                 // as we could end up starting the body copy operation on the main event loop thread, which could
                 // then starve the processing of other requests.  So, we make the TCS RunContinuationsAsynchronously.
                 bool sendRequestContent;
-                var waiter = _expect100ContinueWaiter = new TaskCompletionSource<bool>(TaskContinuationOptions.RunContinuationsAsynchronously);
+                TaskCompletionSource<bool> waiter = _expect100ContinueWaiter;
                 using (var expect100Timer = new Timer(s =>
                 {
                     var thisRef = (Http2Stream)s;
@@ -240,26 +286,24 @@ namespace System.Net.Http
                     // By now, either we got a response from the server or the timer expired.
                 }
 
-                _expect100ContinueWaiter = null;
                 return sendRequestContent;
             }
 
-            private void Reset()
+            private void SendReset()
             {
-                Debug.Assert(Monitor.IsEntered(SyncObject));
+                Debug.Assert(!Monitor.IsEntered(SyncObject));
                 Debug.Assert(_requestCompletionState != StreamCompletionState.InProgress);
                 Debug.Assert(_responseCompletionState != StreamCompletionState.InProgress);
                 Debug.Assert(_requestCompletionState == StreamCompletionState.Failed || _responseCompletionState == StreamCompletionState.Failed,
                     "Reset called but neither request nor response is failed");
 
-                if (NetEventSource.IsEnabled) Trace($"Stream reset. This is a test. Request={_requestCompletionState}, Response={_responseCompletionState}.");
+                if (NetEventSource.IsEnabled) Trace($"Stream reset. Request={_requestCompletionState}, Response={_responseCompletionState}.");
+
                 // Don't send a RST_STREAM if we've already received one from the server.
                 if (_resetException == null)
                 {
                     _connection.LogExceptions(_connection.SendRstStreamAsync(_streamId, Http2ProtocolErrorCode.Cancel));
                 }
-
-                Complete();
             }
 
             private void Complete()
@@ -282,7 +326,9 @@ namespace System.Net.Http
 
                 CancellationTokenSource requestBodyCancellationSource = null;
                 bool signalWaiter = false;
+                bool sendReset = false;
 
+                Debug.Assert(!Monitor.IsEntered(SyncObject));
                 lock (SyncObject)
                 {
                     if (_requestCompletionState == StreamCompletionState.InProgress)
@@ -291,25 +337,7 @@ namespace System.Net.Http
                         Debug.Assert(requestBodyCancellationSource != null);
                     }
 
-                    if (_responseCompletionState == StreamCompletionState.InProgress)
-                    {
-                        _responseCompletionState = StreamCompletionState.Failed;
-                        if (_requestCompletionState != StreamCompletionState.InProgress)
-                        {
-                            Reset();
-                        }
-                    }
-
-                    // Discard any remaining buffered response data
-                    if (_responseBuffer.ActiveLength != 0)
-                    {
-                        _responseBuffer.Discard(_responseBuffer.ActiveLength);
-                    }
-
-                    _responseProtocolState = ResponseProtocolState.Aborted;
-
-                    signalWaiter = _hasWaiter;
-                    _hasWaiter = false;
+                    (signalWaiter, sendReset) = CancelResponseBody();
                 }
 
                 if (requestBodyCancellationSource != null)
@@ -318,10 +346,46 @@ namespace System.Net.Http
                     requestBodyCancellationSource.Cancel();
                 }
 
+                if (sendReset)
+                {
+                    SendReset();
+                }
+
                 if (signalWaiter)
                 {
                     _waitSource.SetResult(true);
                 }
+            }
+
+            // Returns whether the waiter should be signalled or not.
+            private (bool signalWaiter, bool sendReset) CancelResponseBody()
+            {
+                Debug.Assert(Monitor.IsEntered(SyncObject));
+
+                bool sendReset = false;
+
+                if (_responseCompletionState == StreamCompletionState.InProgress)
+                {
+                    _responseCompletionState = StreamCompletionState.Failed;
+                    if (_requestCompletionState != StreamCompletionState.InProgress)
+                    {
+                        sendReset = true;
+                        Complete();
+                    }
+                }
+
+                // Discard any remaining buffered response data
+                if (_responseBuffer.ActiveLength != 0)
+                {
+                    _responseBuffer.Discard(_responseBuffer.ActiveLength);
+                }
+
+                _responseProtocolState = ResponseProtocolState.Aborted;
+
+                bool signalWaiter = _hasWaiter;
+                _hasWaiter = false;
+
+                return (signalWaiter, sendReset);
             }
 
             public void OnWindowUpdate(int amount) => _streamWindow.AdjustCredit(amount);
@@ -339,6 +403,7 @@ namespace System.Net.Http
 
                 // TODO: ISSUE 31309: Optimize HPACK static table decoding
 
+                Debug.Assert(!Monitor.IsEntered(SyncObject));
                 lock (SyncObject)
                 {
                     if (_responseProtocolState == ResponseProtocolState.Aborted)
@@ -382,17 +447,15 @@ namespace System.Net.Http
                                 StatusCode = (HttpStatusCode)statusValue
                             };
 
-                            TaskCompletionSource<bool> expect100ContinueWaiter = _expect100ContinueWaiter;
                             if (statusValue < 200)
                             {
                                 // We do not process headers from 1xx responses.
                                 _responseProtocolState = ResponseProtocolState.ExpectingIgnoredHeaders;
 
-                                if (_response.StatusCode == HttpStatusCode.Continue && expect100ContinueWaiter != null)
+                                if (_response.StatusCode == HttpStatusCode.Continue && _expect100ContinueWaiter != null)
                                 {
                                     if (NetEventSource.IsEnabled) Trace("Received 100-Continue status.");
-                                    expect100ContinueWaiter.TrySetResult(true);
-                                    _expect100ContinueWaiter = null;
+                                    _expect100ContinueWaiter.TrySetResult(true);
                                 }
                             }
                             else
@@ -400,14 +463,13 @@ namespace System.Net.Http
                                 _responseProtocolState = ResponseProtocolState.ExpectingHeaders;
 
                                 // If we are waiting for a 100-continue response, signal the waiter now.
-                                if (expect100ContinueWaiter != null)
+                                if (_expect100ContinueWaiter != null)
                                 {
                                     // If the final status code is >= 300, skip sending the body.
                                     bool shouldSendBody = (statusValue < 300);
 
                                     if (NetEventSource.IsEnabled) Trace($"Expecting 100 Continue but received final status {statusValue}.");
-                                    expect100ContinueWaiter.TrySetResult(shouldSendBody);
-                                    _expect100ContinueWaiter = null;
+                                    _expect100ContinueWaiter.TrySetResult(shouldSendBody);
                                 }
                             }
                         }
@@ -462,6 +524,7 @@ namespace System.Net.Http
 
             public void OnResponseHeadersStart()
             {
+                Debug.Assert(!Monitor.IsEntered(SyncObject));
                 lock (SyncObject)
                 {
                     if (_responseProtocolState == ResponseProtocolState.Aborted)
@@ -484,6 +547,7 @@ namespace System.Net.Http
 
             public void OnResponseHeadersComplete(bool endStream)
             {
+                Debug.Assert(!Monitor.IsEntered(SyncObject));
                 bool signalWaiter;
                 lock (SyncObject)
                 {
@@ -555,6 +619,7 @@ namespace System.Net.Http
 
             public void OnResponseData(ReadOnlySpan<byte> buffer, bool endStream)
             {
+                Debug.Assert(!Monitor.IsEntered(SyncObject));
                 bool signalWaiter;
                 lock (SyncObject)
                 {
@@ -606,10 +671,19 @@ namespace System.Net.Http
                 }
             }
 
-            public void OnReset(Exception resetException, bool canRetry = false)
+            // This is called in several different cases:
+            // (1) Receiving RST_STREAM on this stream. If so, the resetStreamErrorCode will be non-null, and canRetry will be true only if the error code was REFUSED_STREAM.
+            // (2) Receiving GOAWAY that indicates this stream has not been processed. If so, canRetry will be true.
+            // (3) Connection IO failure or protocol violation. If so, resetException will contain the relevant exception and canRetry will be false.
+            // (4) Receiving EOF from the server. If so, resetException will contain an exception like "expected 9 bytes of data", and canRetry will be false.
+            public void OnReset(Exception resetException, Http2ProtocolErrorCode? resetStreamErrorCode = null, bool canRetry = false)
             {
-                if (NetEventSource.IsEnabled) Trace($"{nameof(resetException)}={resetException}");
+                if (NetEventSource.IsEnabled) Trace($"{nameof(resetException)}={resetException}, {nameof(resetStreamErrorCode )}={resetStreamErrorCode}");
 
+                bool cancel = false;
+                CancellationTokenSource requestBodyCancellationSource = null;
+
+                Debug.Assert(!Monitor.IsEntered(SyncObject));
                 lock (SyncObject)
                 {
                     // If we've already finished, don't actually reset the stream.
@@ -636,11 +710,39 @@ namespace System.Net.Http
                         canRetry = false;
                     }
 
-                    _resetException = resetException;
-                    _canRetry = canRetry;
+                    // Per section 8.1 in the RFC:
+                    // If the server has completed the response body (i.e. we've received EndStream)
+                    // but the request body is still sending, and we then receive a RST_STREAM with errorCode = NO_ERROR,
+                    // we treat this specially and simply cancel sending the request body, rather than treating
+                    // the entire request as failed.
+                    if (resetStreamErrorCode == Http2ProtocolErrorCode.NoError &&
+                        _responseCompletionState == StreamCompletionState.Completed)
+                    {
+                        if (_requestCompletionState == StreamCompletionState.InProgress)
+                        {
+                            _requestBodyAbandoned = true;
+                            requestBodyCancellationSource = _requestBodyCancellationSource;
+                            Debug.Assert(requestBodyCancellationSource != null);
+                        }
+                    }
+                    else
+                    {
+                        _resetException = resetException;
+                        _canRetry = canRetry;
+                        cancel = true;
+                    }
                 }
 
-                Cancel();
+                if (requestBodyCancellationSource != null)
+                {
+                    Debug.Assert(_requestBodyAbandoned);
+                    Debug.Assert(!cancel);
+                    requestBodyCancellationSource.Cancel();
+                }
+                else
+                {
+                    Cancel();
+                }
             }
 
             private void CheckResponseBodyState()
@@ -666,6 +768,7 @@ namespace System.Net.Http
             // Determine if we have enough data to process up to complete final response headers.
             private (bool wait, bool isEmptyResponse) TryEnsureHeaders()
             {
+                Debug.Assert(!Monitor.IsEntered(SyncObject));
                 lock (SyncObject)
                 {
                     CheckResponseBodyState();
@@ -762,6 +865,7 @@ namespace System.Net.Http
             {
                 Debug.Assert(buffer.Length > 0);
 
+                Debug.Assert(!Monitor.IsEntered(SyncObject));
                 lock (SyncObject)
                 {
                     CheckResponseBodyState();
@@ -897,6 +1001,7 @@ namespace System.Net.Http
             {
                 // Check if the response body has been fully consumed.
                 bool fullyConsumed = false;
+                Debug.Assert(!Monitor.IsEntered(SyncObject));
                 lock (SyncObject)
                 {
                     if (_responseBuffer.ActiveLength == 0 && _responseProtocolState == ResponseProtocolState.Complete)
@@ -947,6 +1052,7 @@ namespace System.Net.Http
                     var thisRef = (Http2Stream)s;
 
                     bool signalWaiter;
+                    Debug.Assert(!Monitor.IsEntered(thisRef.SyncObject));
                     lock (thisRef.SyncObject)
                     {
                         signalWaiter = thisRef._hasWaiter;

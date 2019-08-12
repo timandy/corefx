@@ -55,7 +55,7 @@ namespace System.Diagnostics.Tests
                     client.GetAsync(Configuration.Http.RemoteEchoServer).Result.Dispose();
                 }
 
-                // Just make sure some events are written, to confirm we successfully subscribed to it. 
+                // Just make sure some events are written, to confirm we successfully subscribed to it.
                 // We should have exactly one Start and one Stop event
                 Assert.Equal(2, eventRecords.Records.Count);
             }
@@ -77,7 +77,7 @@ namespace System.Diagnostics.Tests
                     client.GetAsync(Configuration.Http.RemoteEchoServer).Result.Dispose();
                 }
 
-                // Just make sure some events are written, to confirm we successfully subscribed to it. 
+                // Just make sure some events are written, to confirm we successfully subscribed to it.
                 // We should have exactly one Start and one Stop event
                 Assert.Equal(2, eventRecords.Records.Count);
             }
@@ -99,7 +99,7 @@ namespace System.Diagnostics.Tests
                     client.GetAsync(Configuration.Http.RemoteEchoServer).Result.Dispose();
                 }
 
-                // Just make sure some events are written, to confirm we successfully subscribed to it. 
+                // Just make sure some events are written, to confirm we successfully subscribed to it.
                 // We should have exactly one Start and one Stop event
                 Assert.Equal(2, eventRecords.Records.Count);
             }
@@ -125,7 +125,7 @@ namespace System.Diagnostics.Tests
                 Assert.Equal(1, eventRecords.Records.Count(rec => rec.Key.EndsWith("Stop")));
                 Assert.Equal(2, eventRecords.Records.Count);
 
-                // Check to make sure: The first record must be a request, the next record must be a response. 
+                // Check to make sure: The first record must be a request, the next record must be a response.
                 KeyValuePair<string, object> startEvent;
                 Assert.True(eventRecords.Records.TryDequeue(out startEvent));
                 Assert.Equal("System.Net.Http.Desktop.HttpRequestOut.Start", startEvent.Key);
@@ -161,7 +161,7 @@ namespace System.Diagnostics.Tests
                         (await client.GetAsync(Configuration.Http.RemoteEchoServer)).Dispose();
                     }
 
-                    // Check to make sure: The first record must be a request, the next record must be a response. 
+                    // Check to make sure: The first record must be a request, the next record must be a response.
                     KeyValuePair<string, object> startEvent;
                     Assert.True(eventRecords.Records.TryDequeue(out startEvent));
                     Assert.Equal("System.Net.Http.Desktop.HttpRequestOut.Start", startEvent.Key);
@@ -203,7 +203,7 @@ namespace System.Diagnostics.Tests
 
                     parent.Stop();
 
-                    // Check to make sure: The first record must be a request, the next record must be a response. 
+                    // Check to make sure: The first record must be a request, the next record must be a response.
                     Assert.True(eventRecords.Records.TryDequeue(out var evnt));
                     Assert.Equal("System.Net.Http.Desktop.HttpRequestOut.Start", evnt.Key);
                     HttpWebRequest startRequest = ReadPublicProperty<HttpWebRequest>(evnt.Value, "Request");
@@ -215,7 +215,7 @@ namespace System.Diagnostics.Tests
                     Assert.NotNull(traceparent);
                     Assert.Equal("some=state", tracestate);
                     Assert.Equal("k=v", correlationContext);
-                    Assert.True(traceparent.StartsWith($"00-{parent.TraceId.ToHexString()}-"));
+                    Assert.StartsWith($"00-{parent.TraceId.ToHexString()}-", traceparent);
                     Assert.Matches("^[0-9a-f]{2}-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$", traceparent);
                     Assert.Null(startRequest.Headers["Request-Id"]);
                 }
@@ -241,7 +241,7 @@ namespace System.Diagnostics.Tests
                     (await client.SendAsync(request)).Dispose();
                 }
 
-                // Check to make sure: The first record must be a request, the next record must be a response. 
+                // Check to make sure: The first record must be a request, the next record must be a response.
                 Assert.True(eventRecords.Records.TryDequeue(out var evnt));
                 HttpWebRequest startRequest = ReadPublicProperty<HttpWebRequest>(evnt.Value, "Request");
                 Assert.NotNull(startRequest);
@@ -267,7 +267,7 @@ namespace System.Diagnostics.Tests
                         (await client.SendAsync(request)).Dispose();
                     }
 
-                    // Check to make sure: The first record must be a request, the next record must be a response. 
+                    // Check to make sure: The first record must be a request, the next record must be a response.
                     Assert.True(eventRecords.Records.TryDequeue(out var evnt));
                     HttpWebRequest startRequest = ReadPublicProperty<HttpWebRequest>(evnt.Value, "Request");
                     Assert.NotNull(startRequest);
@@ -301,7 +301,7 @@ namespace System.Diagnostics.Tests
                 Assert.Equal(1, eventRecords.Records.Count(rec => rec.Key.EndsWith("Stop")));
                 Assert.Equal(2, eventRecords.Records.Count);
 
-                // Check to make sure: The first record must be a request, the next record must be a response. 
+                // Check to make sure: The first record must be a request, the next record must be a response.
                 KeyValuePair<string, object> startEvent;
                 Assert.True(eventRecords.Records.TryDequeue(out startEvent));
                 Assert.Equal("System.Net.Http.Desktop.HttpRequestOut.Start", startEvent.Key);
@@ -413,7 +413,7 @@ namespace System.Diagnostics.Tests
                 var correlationContext = thisRequest.Headers["Correlation-Context"];
 
                 Assert.NotNull(requestId);
-                Assert.True(requestId.StartsWith(parentActivity.Id));
+                Assert.StartsWith(parentActivity.Id, requestId);
 
                 Assert.NotNull(correlationContext);
                 Assert.True(correlationContext == "k1=v1,k2=v2" || correlationContext == "k2=v2,k1=v1");
@@ -576,7 +576,7 @@ namespace System.Diagnostics.Tests
 
                 // Examine the result. Make sure we got all successful requests.
 
-                // Just make sure some events are written, to confirm we successfully subscribed to it. We should have 
+                // Just make sure some events are written, to confirm we successfully subscribed to it. We should have
                 // exactly 1 Start event per request and exaclty 1 Stop event per response (if request succeeded)
                 var successfulTasks = tasks.Where(t => t.Value.Status == TaskStatus.RanToCompletion);
 
@@ -607,7 +607,7 @@ namespace System.Diagnostics.Tests
 
                         // all requests have Request-Id with proper parent Id
                         var requestId = request.Headers["Request-Id"];
-                        Assert.True(requestId.StartsWith(parentActivity.Id));
+                        Assert.StartsWith(parentActivity.Id, requestId);
                         // all request activities are siblings:
                         var childSuffix = requestId.Substring(0, parentActivity.Id.Length);
                         Assert.True(childSuffix.IndexOf('.') == childSuffix.Length - 1);
@@ -677,8 +677,8 @@ namespace System.Diagnostics.Tests
 
         /// <summary>
         /// CallbackObserver is an adapter class that creates an observer (which you can pass
-        /// to IObservable.Subscribe), and calls the given callback every time the 'next' 
-        /// operation on the IObserver happens. 
+        /// to IObservable.Subscribe), and calls the given callback every time the 'next'
+        /// operation on the IObserver happens.
         /// </summary>
         /// <typeparam name="T"></typeparam>
         private class CallbackObserver<T> : IObserver<T>

@@ -21,10 +21,10 @@
 // distribute, sublicense, and/or sell copies of the Software, and to
 // permit persons to whom the Software is furnished to do so, subject to
 // the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be
 // included in all copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
 // EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
 // MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -71,7 +71,7 @@ namespace System.Drawing
             return CreateFromHandle(imagePtr);
         }
 
-        // See http://support.microsoft.com/default.aspx?scid=kb;en-us;831419 for performance discussion    
+        // See http://support.microsoft.com/default.aspx?scid=kb;en-us;831419 for performance discussion
         public static Image FromStream(Stream stream, bool useEmbeddedColorManagement, bool validateImageData)
         {
             return LoadFromStream(stream, false);
@@ -93,9 +93,8 @@ namespace System.Drawing
 
         internal static Image CreateFromHandle(IntPtr handle)
         {
-            ImageType type;
-            Gdip.CheckStatus(Gdip.GdipGetImageType(handle, out type));
-            switch (type)
+            Gdip.CheckStatus(Gdip.GdipGetImageType(handle, out int type));
+            switch ((ImageType)type)
             {
                 case ImageType.Bitmap:
                     return new Bitmap(handle);
@@ -193,7 +192,7 @@ namespace System.Drawing
             return imagePtr;
         }
 
-        // non-static    
+        // non-static
         public RectangleF GetBounds(ref GraphicsUnit pageUnit)
         {
             RectangleF source;
@@ -267,10 +266,14 @@ namespace System.Drawing
 
             using (Graphics g = Graphics.FromImage(ThumbNail))
             {
-                int status = Gdip.GdipDrawImageRectRectI(g.NativeGraphics, nativeImage,
+                int status = Gdip.GdipDrawImageRectRectI(
+                    new HandleRef(this, g.NativeGraphics),
+                    new HandleRef(this, nativeImage),
                     0, 0, thumbWidth, thumbHeight,
                     0, 0, this.Width, this.Height,
-                    GraphicsUnit.Pixel, IntPtr.Zero, null, IntPtr.Zero);
+                    GraphicsUnit.Pixel,
+                    new HandleRef(this, IntPtr.Zero), null,
+                    new HandleRef(this, IntPtr.Zero));
 
                 Gdip.CheckStatus(status);
             }
