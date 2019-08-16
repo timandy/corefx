@@ -527,43 +527,43 @@ namespace System.DirectoryServices.AccountManagement
         //
 
         // The user whose groups we're retrieving
-        private SafeMemoryPtr _psUserSid = null;
+        private readonly SafeMemoryPtr _psUserSid = null;
 
         // The SID of the machine domain of the machine we're running on
-        private SafeMemoryPtr _psMachineSid = null;
+        private readonly SafeMemoryPtr _psMachineSid = null;
 
         // The user's StoreCtx
-        private StoreCtx _userStoreCtx;
+        private readonly StoreCtx _userStoreCtx;
 
         // The user's credentials
-        private NetCred _credentials;
+        private readonly NetCred _credentials;
 
         // The user's options
-        private ContextOptions _contextOptions;
+        private readonly ContextOptions _contextOptions;
 
         // The ctxBase (e.g., DirectoryEntry) from the user's StoreCtx
-        private object _userCtxBase;
+        private readonly object _userCtxBase;
 
         // The type (domain, local, etc.) of the user
-        private ContextType _userType;
+        private readonly ContextType _userType;
 
         // The authority's name (hostname or domainname)
-        private string _flatUserAuthority;
+        private readonly string _flatUserAuthority;
 
         // The index (into this.groupSidList) of the group we're currently enumerating
         private int _currentGroup = -1;
 
         // The groups we're enumerating over
-        private SidList _groupSidList;
+        private readonly SidList _groupSidList;
 
         // The native TOKEN_GROUPS returned by AuthzGetInformationFromContext
-        private SafeMemoryPtr _psBuffer = null;
+        private readonly SafeMemoryPtr _psBuffer = null;
 
         // Have we been disposed?
         private bool _disposed = false;
 
         // Maps sidIssuerName --> PrincipalContext
-        private Hashtable _contexts = new Hashtable();
+        private readonly Hashtable _contexts = new Hashtable();
 
         // Contains cached results if the local machine is  a DC.
         private bool? _localMachineIsDC = null;
@@ -610,7 +610,7 @@ namespace System.DirectoryServices.AccountManagement
                         int groupCount = groupSidAndAttrs.Length;
                         IntPtr[] pGroupSids = new IntPtr[groupCount];
 
-                        for(int i=0; i < groupCount; i++)
+                        for (int i=0; i < groupCount; i++)
                         {
                             pGroupSids[i] = groupSidAndAttrs[i].pSid;
 
@@ -699,7 +699,7 @@ namespace System.DirectoryServices.AccountManagement
 
                             IntPtr pCurrentDomain = Marshal.ReadIntPtr(pDomains, Marshal.SizeOf(typeof(Int32)));
 
-                            for(int i=0; i < domainCount; i++)
+                            for (int i=0; i < domainCount; i++)
                             {
                                 domains[i] =(UnsafeNativeMethods.LSA_TRUST_INFORMATION) Marshal.PtrToStructure(pCurrentDomain, typeof(UnsafeNativeMethods.LSA_TRUST_INFORMATION));
                                 pCurrentDomain = new IntPtr(pCurrentDomain.ToInt64() + Marshal.SizeOf(typeof(UnsafeNativeMethods.LSA_TRUST_INFORMATION)));

@@ -22,7 +22,7 @@ namespace System.ComponentModel.Composition
     [DebuggerDisplay("{Message}")]
     public class CompositionException : Exception
     {
-        private ReadOnlyCollection<CompositionError> _errors;
+        private readonly ReadOnlyCollection<CompositionError> _errors;
 
         /// <summary>
         ///     Initializes a new instance of the <see cref="CompositionException"/> class.
@@ -191,7 +191,7 @@ namespace System.ComponentModel.Composition
             }
             else
             {
-                if(errorsCount != 1 || pathCount != 1)
+                if (errorsCount != 1 || pathCount != 1)
                 {
                     throw new Exception(SR.Diagnostic_InternalExceptionMessage);
                 }

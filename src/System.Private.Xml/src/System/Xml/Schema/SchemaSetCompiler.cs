@@ -13,18 +13,18 @@ namespace System.Xml.Schema
     internal sealed class Compiler : BaseProcessor
     {
         private string _restrictionErrorMsg;
-        private XmlSchemaObjectTable _attributes = new XmlSchemaObjectTable();
-        private XmlSchemaObjectTable _attributeGroups = new XmlSchemaObjectTable();
-        private XmlSchemaObjectTable _elements = new XmlSchemaObjectTable();
-        private XmlSchemaObjectTable _schemaTypes = new XmlSchemaObjectTable();
-        private XmlSchemaObjectTable _groups = new XmlSchemaObjectTable();
-        private XmlSchemaObjectTable _notations = new XmlSchemaObjectTable();
-        private XmlSchemaObjectTable _examplars = new XmlSchemaObjectTable();
-        private XmlSchemaObjectTable _identityConstraints = new XmlSchemaObjectTable();
-        private Stack _complexTypeStack = new Stack();
-        private Hashtable _schemasToCompile = new Hashtable();
+        private readonly XmlSchemaObjectTable _attributes = new XmlSchemaObjectTable();
+        private readonly XmlSchemaObjectTable _attributeGroups = new XmlSchemaObjectTable();
+        private readonly XmlSchemaObjectTable _elements = new XmlSchemaObjectTable();
+        private readonly XmlSchemaObjectTable _schemaTypes = new XmlSchemaObjectTable();
+        private readonly XmlSchemaObjectTable _groups = new XmlSchemaObjectTable();
+        private readonly XmlSchemaObjectTable _notations = new XmlSchemaObjectTable();
+        private readonly XmlSchemaObjectTable _examplars = new XmlSchemaObjectTable();
+        private readonly XmlSchemaObjectTable _identityConstraints = new XmlSchemaObjectTable();
+        private readonly Stack _complexTypeStack = new Stack();
+        private readonly Hashtable _schemasToCompile = new Hashtable();
 
-        private XmlSchema _schemaForSchema;
+        private readonly XmlSchema _schemaForSchema;
 
         public Compiler(XmlNameTable nameTable, ValidationEventHandler eventHandler, XmlSchema schemaForSchema, XmlSchemaCompilationSettings compilationSettings) : base(nameTable, null, eventHandler, compilationSettings)
         {
@@ -1737,7 +1737,7 @@ namespace System.Xml.Schema
         private bool IsElementFromGroupBaseHack(XmlSchemaElement derivedElement, XmlSchemaGroupBase baseGroupBase,  bool skipEmptableOnly) {
             bool isMatched = false;
 
-            foreach(XmlSchemaParticle baseParticle in baseGroupBase.Items) {
+            foreach (XmlSchemaParticle baseParticle in baseGroupBase.Items) {
                 if (!isMatched && IsRangeSimple(baseParticle.MinOccurs, baseParticle.MaxOccurs)) {
                     string minOccursElement = baseParticle.MinOccursString;
                     string maxOccursElement = baseParticle.MaxOccursString;

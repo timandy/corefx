@@ -42,7 +42,7 @@ namespace System.ComponentModel.Composition.Hosting
 
                 case MemberTypes.Field:
                 default:
-                    if(member.MemberType != MemberTypes.Field)
+                    if (member.MemberType != MemberTypes.Field)
                     {
                         throw new Exception(SR.Diagnostic_InternalExceptionMessage);
                     }
@@ -84,7 +84,7 @@ namespace System.ComponentModel.Composition.Hosting
                     }
                 }
                 // if both member type and the contract type are open generic types, make sure that their parameters are ordered the same way
-                else if(specifiedContractType.ContainsGenericParameters && memberType.ContainsGenericParameters)
+                else if (specifiedContractType.ContainsGenericParameters && memberType.ContainsGenericParameters)
                 {
                     var memberGenericParameters = memberType.GetPureGenericParameters();
                     if (specifiedContractType.GetPureGenericArity() == memberGenericParameters.Count)
@@ -375,7 +375,7 @@ internal static Type GetContractTypeFromImport(this IAttributedImport import, Im
             private bool _containsNulls = false;
             private static readonly Type ObjectType = typeof(object);
             private static readonly Type TypeType = typeof(Type);
-            private Collection<object> _innerList = new Collection<object>();
+            private readonly Collection<object> _innerList = new Collection<object>();
 
             public void Add(object item, Type itemType)
             {
@@ -447,7 +447,7 @@ internal static Type GetContractTypeFromImport(this IAttributedImport import, Im
 
                 Array array = Array.CreateInstance(_arrayType, _innerList.Count);
 
-                for(int i = 0; i < array.Length; i++)
+                for (int i = 0; i < array.Length; i++)
                 {
                     array.SetValue(_innerList[i], i);
                 }

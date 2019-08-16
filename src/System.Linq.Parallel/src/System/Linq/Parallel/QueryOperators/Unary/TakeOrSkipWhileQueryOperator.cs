@@ -42,8 +42,8 @@ namespace System.Linq.Parallel
     {
         // Predicate function used to decide when to stop yielding elements. One pair is used for
         // index-based evaluation (i.e. it is passed the index as well as the element's value).
-        private Func<TResult, bool> _predicate;
-        private Func<TResult, int, bool> _indexedPredicate;
+        private readonly Func<TResult, bool> _predicate;
+        private readonly Func<TResult, int, bool> _indexedPredicate;
 
         private readonly bool _take; // Whether to take (true) or skip (false).
         private bool _prematureMerge = false; // Whether to prematurely merge the input of this operator.
@@ -198,7 +198,7 @@ namespace System.Linq.Parallel
         // The enumerator type responsible for executing the take- or skip-while.
         //
 
-        class TakeOrSkipWhileQueryOperatorEnumerator<TKey> : QueryOperatorEnumerator<TResult, TKey>
+        private class TakeOrSkipWhileQueryOperatorEnumerator<TKey> : QueryOperatorEnumerator<TResult, TKey>
         {
             private readonly QueryOperatorEnumerator<TResult, TKey> _source; // The data source to enumerate.
             private readonly Func<TResult, bool> _predicate;  // The actual predicate function.
@@ -394,7 +394,7 @@ namespace System.Linq.Parallel
             }
         }
 
-        class OperatorState<TKey>
+        private class OperatorState<TKey>
         {
             internal volatile int _updatesDone = 0;
             internal TKey _currentLowKey;

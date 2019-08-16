@@ -267,14 +267,14 @@ namespace System.Text.RegularExpressions
          * True if we need to do the backtrack logic for the current operation
          */
         private bool IsBack() {
-            return(_regexopcode & RegexCode.Back) != 0;
+            return (_regexopcode & RegexCode.Back) != 0;
         }
 
         /*
          * True if we need to do the second-backtrack logic for the current operation
          */
         private bool IsBack2() {
-            return(_regexopcode & RegexCode.Back2) != 0;
+            return (_regexopcode & RegexCode.Back2) != 0;
         }
 #endif
 
@@ -1608,7 +1608,7 @@ namespace System.Text.RegularExpressions
         /*
          * Some simple debugging stuff
          */
-        private static MethodInfo s_debugWriteLine = typeof(Debug).GetMethod("WriteLine", new Type[] {typeof(string)});
+        private static readonly MethodInfo s_debugWriteLine = typeof(Debug).GetMethod("WriteLine", new Type[] {typeof(string)});
 
         /*
          * Debug only: emit code to print out a message

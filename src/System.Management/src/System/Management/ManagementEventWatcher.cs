@@ -122,7 +122,7 @@ namespace System.Management
         private uint                    cachedCount; //says how many objects are in the cache (when using BlockSize option)
         private uint                    cacheIndex; //used to walk the cache
         private SinkForEventQuery       sink; // the sink implementation for event queries
-        private WmiDelegateInvoker      delegateInvoker;
+        private readonly WmiDelegateInvoker      delegateInvoker;
 
         //Called when IdentifierChanged() event fires
         private void HandleIdentifierChange(object sender,
@@ -395,7 +395,7 @@ namespace System.Management
             Initialize ();
 
 #pragma warning disable CA2002
-            lock(this)
+            lock (this)
 #pragma warning restore CA2002
             {
                 SecurityHandler securityHandler = Scope.GetSecurityHandler();
@@ -607,12 +607,12 @@ namespace System.Management
 
     internal class SinkForEventQuery : IWmiEventSource
     {
-        private ManagementEventWatcher          eventWatcher;
-        private object                          context;
-        private IWbemServices                   services;
+        private readonly ManagementEventWatcher          eventWatcher;
+        private readonly object                          context;
+        private readonly IWbemServices                   services;
         private IWbemObjectSink stub;           // The secured IWbemObjectSink
         private int status;
-        private bool isLocal;
+        private readonly bool isLocal;
 
         public int Status {get {return status;} set {status=value;}}
 
@@ -627,13 +627,13 @@ namespace System.Management
             this.isLocal = false;
 
             // determine if the server is local, and if so don't create a real stub using unsecap
-            if((0==string.Compare(eventWatcher.Scope.Path.Server, ".", StringComparison.OrdinalIgnoreCase)) ||
+            if ((0==string.Compare(eventWatcher.Scope.Path.Server, ".", StringComparison.OrdinalIgnoreCase)) ||
                 (0==string.Compare(eventWatcher.Scope.Path.Server, System.Environment.MachineName, StringComparison.OrdinalIgnoreCase)))
             {
                 this.isLocal = true;
             }
 
-            if(MTAHelper.IsNoContextMTA())
+            if (MTAHelper.IsNoContextMTA())
                 HackToCreateStubInMTA(this);
             else
             {
@@ -647,7 +647,7 @@ namespace System.Management
 
         }
 
-        void HackToCreateStubInMTA(object param)
+        private void HackToCreateStubInMTA(object param)
         {
             SinkForEventQuery obj = (SinkForEventQuery) param ;
             object dmuxStub = null;
@@ -701,7 +701,7 @@ namespace System.Management
 
         // On Win2k, we get a deadlock if we do a Cancel within a SetStatus
         // Instead of calling it from SetStatus, we use ThreadPool.QueueUserWorkItem
-        void Cancel2(object o)
+        private void Cancel2(object o)
         {
             //
             // Try catch the call to cancel. In this case the cancel is being done without the client
@@ -722,7 +722,7 @@ namespace System.Management
             if (null != stub)
             {
 #pragma warning disable CA2002
-                lock(this)
+                lock (this)
 #pragma warning restore CA2002
                 {
                     if (null != stub)
@@ -750,7 +750,7 @@ namespace System.Management
             if (null != stub)
             {
 #pragma warning disable CA2002
-                lock(this)
+                lock (this)
 #pragma warning restore CA2002
                 {
                     /*

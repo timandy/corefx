@@ -51,7 +51,7 @@ namespace System.Xml
         private const int NsXmlSeedIndex = 14;
 
         // If changing the array below ensure that the seed indexes before match
-        private static readonly (string key, int hash)[] s_nameTableSeeds = new []
+        private static readonly (string key, int hash)[] s_nameTableSeeds = new[]
             {
                 (DocumentName, System.Xml.NameTable.ComputeHash32(DocumentName)),
                 (DocumentFragmentName, System.Xml.NameTable.ComputeHash32(DocumentFragmentName)),
@@ -70,8 +70,8 @@ namespace System.Xml
                 (XmlReservedNs.NsXml, System.Xml.NameTable.ComputeHash32(XmlReservedNs.NsXml))
             };
 
-        private XmlImplementation _implementation;
-        private DomNameTable _domNameTable; // hash table of XmlName
+        private readonly XmlImplementation _implementation;
+        private readonly DomNameTable _domNameTable; // hash table of XmlName
         private XmlLinkedNode _lastChild;
         private XmlNamedNodeMap _entities;
         private Hashtable _htElementIdMap;

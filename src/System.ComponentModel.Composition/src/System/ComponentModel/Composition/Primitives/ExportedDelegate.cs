@@ -12,8 +12,8 @@ namespace System.ComponentModel.Composition.Primitives
     [SuppressMessage("Microsoft.Naming", "CA1711:IdentifiersShouldNotHaveIncorrectSuffix")]
     public class ExportedDelegate
     {
-        private object _instance;
-        private MethodInfo _method;
+        private readonly object _instance;
+        private readonly MethodInfo _method;
 
         protected ExportedDelegate() { }
 
@@ -37,7 +37,7 @@ namespace System.ComponentModel.Composition.Primitives
             {
                 return _method.CreateDelegate(delegateType, _instance);
             }
-            catch(ArgumentException)
+            catch (ArgumentException)
             {
                 //Bind failure occurs return null;
                 return null;

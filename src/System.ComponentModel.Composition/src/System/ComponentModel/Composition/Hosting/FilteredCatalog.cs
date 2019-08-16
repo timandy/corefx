@@ -14,10 +14,10 @@ namespace System.ComponentModel.Composition.Hosting
 {
     public partial class FilteredCatalog : ComposablePartCatalog, INotifyComposablePartCatalogChanged
     {
-        private Func<ComposablePartDefinition, bool> _filter;
+        private readonly Func<ComposablePartDefinition, bool> _filter;
         private ComposablePartCatalog _innerCatalog;
         private FilteredCatalog _complement;
-        private object _lock = new object();
+        private readonly object _lock = new object();
         private volatile bool _isDisposed = false;
 
         /// <summary>
@@ -57,7 +57,7 @@ namespace System.ComponentModel.Composition.Hosting
             {
                 if (disposing)
                 {
-                    if(!_isDisposed)
+                    if (!_isDisposed)
                     {
                         INotifyComposablePartCatalogChanged notifyCatalog = null;
                         try
@@ -157,7 +157,7 @@ namespace System.ComponentModel.Composition.Hosting
             Requires.NotNull(definition, nameof(definition));
 
             var exports = new List<Tuple<ComposablePartDefinition, ExportDefinition>>();
-            foreach(var export in _innerCatalog.GetExports(definition))
+            foreach (var export in _innerCatalog.GetExports(definition))
             {
                 if (_filter(export.Item1))
                 {

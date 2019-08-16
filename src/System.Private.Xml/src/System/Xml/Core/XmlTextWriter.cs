@@ -131,16 +131,16 @@ namespace System.Xml
         // Fields
         //
         // output
-        private TextWriter _textWriter;
-        private XmlTextEncoder _xmlEncoder;
-        private Encoding _encoding;
+        private readonly TextWriter _textWriter;
+        private readonly XmlTextEncoder _xmlEncoder;
+        private readonly Encoding _encoding;
 
         // formatting
         private Formatting _formatting;
         private bool _indented; // perf - faster to check a boolean.
         private int _indentation;
         private char[] _indentChars;
-        private static char[] s_defaultIndentChars = CreateDefaultIndentChars();
+        private static readonly char[] s_defaultIndentChars = CreateDefaultIndentChars();
 
         // This method is needed as the native code compiler fails when this initialization is inline
         private static char[] CreateDefaultIndentChars()
@@ -189,7 +189,7 @@ namespace System.Xml
         private const int MaxNamespacesWalkCount = 16;
 #endif
 
-        private static string[] s_stateName = {
+        private static readonly string[] s_stateName = {
             "Start",
             "Prolog",
             "PostDTD",
@@ -202,7 +202,7 @@ namespace System.Xml
             "Closed",
         };
 
-        private static string[] s_tokenName = {
+        private static readonly string[] s_tokenName = {
             "PI",
             "Doctype",
             "Comment",
@@ -1426,13 +1426,13 @@ namespace System.Xml
             {
                 _textWriter.WriteLine();
                 int i = (beforeEndElement ? _top - 1 : _top) * _indentation;
-                if(i <= _indentChars.Length)
+                if (i <= _indentChars.Length)
                 {
                     _textWriter.Write(_indentChars, 0, i);
                 }
                 else
                 {
-                    while(i > 0)
+                    while (i > 0)
                     {
                         _textWriter.Write(_indentChars, 0, Math.Min(i, _indentChars.Length));
                         i -= _indentChars.Length;

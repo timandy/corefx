@@ -180,12 +180,12 @@ namespace System.Linq.Parallel
         // return any duplicates.
         //
 
-        class UnionQueryOperatorEnumerator<TLeftKey, TRightKey> : QueryOperatorEnumerator<TInputOutput, int>
+        private class UnionQueryOperatorEnumerator<TLeftKey, TRightKey> : QueryOperatorEnumerator<TInputOutput, int>
         {
             private QueryOperatorEnumerator<Pair<TInputOutput, NoKeyMemoizationRequired>, TLeftKey> _leftSource; // Left data source.
             private QueryOperatorEnumerator<Pair<TInputOutput, NoKeyMemoizationRequired>, TRightKey> _rightSource; // Right data source.
             private Set<TInputOutput> _hashLookup; // The hash lookup, used to produce the union.
-            private CancellationToken _cancellationToken;
+            private readonly CancellationToken _cancellationToken;
             private Shared<int> _outputLoopCount;
             private readonly IEqualityComparer<TInputOutput> _comparer;
 
@@ -294,16 +294,16 @@ namespace System.Linq.Parallel
             }
         }
 
-        class OrderedUnionQueryOperatorEnumerator<TLeftKey, TRightKey> : QueryOperatorEnumerator<TInputOutput, ConcatKey<TLeftKey, TRightKey>>
+        private class OrderedUnionQueryOperatorEnumerator<TLeftKey, TRightKey> : QueryOperatorEnumerator<TInputOutput, ConcatKey<TLeftKey, TRightKey>>
         {
-            private QueryOperatorEnumerator<Pair<TInputOutput, NoKeyMemoizationRequired>, TLeftKey> _leftSource; // Left data source.
-            private QueryOperatorEnumerator<Pair<TInputOutput, NoKeyMemoizationRequired>, TRightKey> _rightSource; // Right data source.
-            private IComparer<ConcatKey<TLeftKey, TRightKey>> _keyComparer; // Comparer for compound order keys.
+            private readonly QueryOperatorEnumerator<Pair<TInputOutput, NoKeyMemoizationRequired>, TLeftKey> _leftSource; // Left data source.
+            private readonly QueryOperatorEnumerator<Pair<TInputOutput, NoKeyMemoizationRequired>, TRightKey> _rightSource; // Right data source.
+            private readonly IComparer<ConcatKey<TLeftKey, TRightKey>> _keyComparer; // Comparer for compound order keys.
             private IEnumerator<KeyValuePair<Wrapper<TInputOutput>, Pair<TInputOutput, ConcatKey<TLeftKey, TRightKey>>>> _outputEnumerator; // Enumerator over the output of the union.
-            private bool _leftOrdered; // Whether the left data source is ordered.
-            private bool _rightOrdered; // Whether the right data source is ordered.
-            private IEqualityComparer<TInputOutput> _comparer; // Comparer for the elements.
-            private CancellationToken _cancellationToken;
+            private readonly bool _leftOrdered; // Whether the left data source is ordered.
+            private readonly bool _rightOrdered; // Whether the right data source is ordered.
+            private readonly IEqualityComparer<TInputOutput> _comparer; // Comparer for the elements.
+            private readonly CancellationToken _cancellationToken;
 
             //---------------------------------------------------------------------------------------
             // Instantiates a new union operator.

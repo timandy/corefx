@@ -51,9 +51,9 @@ namespace System.Management
     //CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC//
     public class QualifierDataCollection : ICollection, IEnumerable
     {
-        private ManagementBaseObject parent;
-        private string propertyOrMethodName;
-        private QualifierType qualifierSetType;
+        private readonly ManagementBaseObject parent;
+        private readonly string propertyOrMethodName;
+        private readonly QualifierType qualifierSetType;
 
         internal QualifierDataCollection(ManagementBaseObject parent) : base()
         {
@@ -97,7 +97,7 @@ namespace System.Management
                 case QualifierType.MethodQualifier :
                     status = parent.wbemObject.GetMethodQualifierSet_(propertyOrMethodName, out qualifierSet);
                     break;
-                default :
+                default:
                     throw new ManagementException(ManagementStatus.Unexpected, null, null);    // Is this the best fit error ??
             }
 
@@ -131,10 +131,10 @@ namespace System.Management
                 {
                     quals = GetTypeQualifierSet();
                 }
-                catch(ManagementException e)
+                catch (ManagementException e)
                 {
                     // If we ask for the number of qualifiers on a system property, we return '0'
-                    if(qualifierSetType == QualifierType.PropertyQualifier && e.ErrorCode == ManagementStatus.SystemProperty)
+                    if (qualifierSetType == QualifierType.PropertyQualifier && e.ErrorCode == ManagementStatus.SystemProperty)
                         return 0;
                     else
                         throw;
@@ -195,10 +195,10 @@ namespace System.Management
             {
                 quals = GetTypeQualifierSet();
             }
-            catch(ManagementException e)
+            catch (ManagementException e)
             {
                 // There are NO qualifiers on system properties, so we just return
-                if(qualifierSetType == QualifierType.PropertyQualifier && e.ErrorCode == ManagementStatus.SystemProperty)
+                if (qualifierSetType == QualifierType.PropertyQualifier && e.ErrorCode == ManagementStatus.SystemProperty)
                     return;
                 else
                     throw;
@@ -305,10 +305,10 @@ namespace System.Management
         /// </example>
         public class QualifierDataEnumerator : IEnumerator
         {
-            private ManagementBaseObject parent;
-            private string propertyOrMethodName;
-            private QualifierType qualifierType;
-            private string[] qualifierNames;
+            private readonly ManagementBaseObject parent;
+            private readonly string propertyOrMethodName;
+            private readonly QualifierType qualifierType;
+            private readonly string[] qualifierNames;
             private int index = -1;
 
             //Internal constructor
@@ -334,12 +334,12 @@ namespace System.Management
                     case QualifierType.MethodQualifier :
                         status = parent.wbemObject.GetMethodQualifierSet_(propertyOrMethodName, out qualifierSet);
                         break;
-                    default :
+                    default:
                         throw new ManagementException(ManagementStatus.Unexpected, null, null);    // Is this the best fit error ??
                 }
 
                 // If we got an error code back, assume there are NO qualifiers for this object/property/method
-                if(status < 0)
+                if (status < 0)
                 {
                     qualifierNames = Array.Empty<string>();
                 }

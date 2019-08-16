@@ -245,7 +245,7 @@ namespace System.Linq.Expressions.Tests
         [Theory, ClassData(typeof(CompilationTypes))]
         public void CatchFromExternallyThrownString(bool useInterpreter)
         {
-            foreach(bool assemblyWraps in new []{false, true})
+            foreach (bool assemblyWraps in new []{false, true})
             {
                 CustomAttributeBuilder custAtt =
                     new CustomAttributeBuilder(
@@ -1073,10 +1073,8 @@ namespace System.Linq.Expressions.Tests
         }
 
         private bool MethodWithManyArguments(
-            int x, int y, int z,
-            int α, int β, int γ, int δ,
-            int klaatu, int barada, int nikto,
-            int anáil, int nathrach, int ortha, int bháis, int @is, int beatha, int @do, int chéal, int déanaimh,
+            int a, int b, int c, int d, int e, int f, int g, int h, int i, int j,
+            int k, int l, int m, int n, int o, int p, int q, int r, int s,
             bool returnBack)
         {
             return returnBack;

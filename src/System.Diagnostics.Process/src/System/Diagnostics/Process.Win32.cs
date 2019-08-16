@@ -157,7 +157,7 @@ namespace System.Diagnostics
 
         internal unsafe class ShellExecuteHelper
         {
-            private Interop.Shell32.SHELLEXECUTEINFO* _executeInfo;
+            private readonly Interop.Shell32.SHELLEXECUTEINFO* _executeInfo;
             private bool _succeeded;
             private bool _notpresent;
 
@@ -439,7 +439,7 @@ namespace System.Diagnostics
                 .Where(p => !p.Handle.IsInvalid && predicate(p.Process))
                 .ToList();
 
-            SafeProcessHandle SafeGetHandle(Process process)
+            static SafeProcessHandle SafeGetHandle(Process process)
             {
                 try
                 {

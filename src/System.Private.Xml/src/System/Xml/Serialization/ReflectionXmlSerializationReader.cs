@@ -20,7 +20,7 @@ namespace System.Xml.Serialization
         private static TypeDesc StringTypeDesc { get; set; } = (new TypeScope()).GetTypeDesc(typeof(string));
         private static TypeDesc QnameTypeDesc { get; set; } = (new TypeScope()).GetTypeDesc(typeof(XmlQualifiedName));
 
-        private XmlMapping _mapping;
+        private readonly XmlMapping _mapping;
 
         public ReflectionXmlSerializationReader(XmlMapping mapping, XmlReader xmlReader, XmlDeserializationEvents events, string encodingStyle)
         {
@@ -603,7 +603,7 @@ namespace System.Xml.Serialization
             }
         }
 
-        private static ConcurrentDictionary<Tuple<Type, string>, ReflectionXmlSerializationReaderHelper.SetMemberValueDelegate> s_setMemberValueDelegateCache = new ConcurrentDictionary<Tuple<Type, string>, ReflectionXmlSerializationReaderHelper.SetMemberValueDelegate>();
+        private static readonly ConcurrentDictionary<Tuple<Type, string>, ReflectionXmlSerializationReaderHelper.SetMemberValueDelegate> s_setMemberValueDelegateCache = new ConcurrentDictionary<Tuple<Type, string>, ReflectionXmlSerializationReaderHelper.SetMemberValueDelegate>();
 
         private static ReflectionXmlSerializationReaderHelper.SetMemberValueDelegate GetSetMemberValueDelegate(object o, string memberName)
         {
@@ -849,7 +849,7 @@ namespace System.Xml.Serialization
                 {
                     Reader.Skip();
                 }
-                else if(element.Mapping.TypeDesc.Type == typeof(TimeSpan) && Reader.IsEmptyElement)
+                else if (element.Mapping.TypeDesc.Type == typeof(TimeSpan) && Reader.IsEmptyElement)
                 {
                     Reader.Skip();
                     value = default(TimeSpan);

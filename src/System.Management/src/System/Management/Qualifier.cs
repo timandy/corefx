@@ -47,10 +47,10 @@ namespace System.Management
     //CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC//
     public class QualifierData
     {
-        private ManagementBaseObject parent;  //need access to IWbemClassObject pointer to be able to refresh qualifiers
-        private string propertyOrMethodName; //remains null for object qualifiers
-        private string qualifierName;
-        private QualifierType qualifierType;
+        private readonly ManagementBaseObject parent;  //need access to IWbemClassObject pointer to be able to refresh qualifiers
+        private readonly string propertyOrMethodName; //remains null for object qualifiers
+        private readonly string qualifierName;
+        private readonly QualifierType qualifierType;
         private object qualifierValue;
         private int qualifierFlavor;
         private IWbemQualifierSetFreeThreaded qualifierSet;
@@ -80,7 +80,7 @@ namespace System.Management
                 case QualifierType.MethodQualifier :
                     status = parent.wbemObject.GetMethodQualifierSet_(propertyOrMethodName, out qualifierSet);
                     break;
-                default :
+                default:
                     throw new ManagementException(ManagementStatus.Unexpected, null, null); //is this the best fit error ??
             }
 

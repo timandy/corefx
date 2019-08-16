@@ -16,7 +16,7 @@ namespace System.Data.OleDb
 {
     public sealed class OleDbDataReader : DbDataReader
     {
-        private CommandBehavior _commandBehavior;
+        private readonly CommandBehavior _commandBehavior;
 
         // object model interaction
         private OleDbConnection _connection;
@@ -33,11 +33,11 @@ namespace System.Data.OleDb
 
         private ChapterHandle _chapterHandle = ChapterHandle.DB_NULL_HCHAPTER;
 
-        private int _depth;
+        private readonly int _depth;
         private bool _isClosed, _isRead, _hasRows, _hasRowsReadCheck;
 
-        long _sequentialBytesRead;
-        int _sequentialOrdinal;
+        private long _sequentialBytesRead;
+        private int _sequentialOrdinal;
 
         private Bindings[] _bindings; // _metdata contains the ColumnBinding
 

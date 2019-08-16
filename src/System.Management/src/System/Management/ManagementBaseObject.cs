@@ -185,7 +185,7 @@ namespace System.Management
 
 #pragma warning disable CA1823
 #pragma warning disable CS0169 // Kept for possible reflection, comment above for history
-        private static WbemContext lockOnFastProx; // RemovedDuringPort System.Management.Instrumentation.WMICapabilities.IsWindowsXPOrHigher()?null:new WbemContext();
+        private static readonly WbemContext lockOnFastProx; // RemovedDuringPort System.Management.Instrumentation.WMICapabilities.IsWindowsXPOrHigher()?null:new WbemContext();
 #pragma warning restore CS0169
 #pragma warning restore CA1823
 
@@ -254,7 +254,7 @@ namespace System.Management
         /// </remarks>
         public static explicit operator IntPtr(ManagementBaseObject managementObject)
         {
-            if(null == managementObject)
+            if (null == managementObject)
                 return IntPtr.Zero;
 
             return (IntPtr)managementObject.wbemObject;
@@ -593,7 +593,7 @@ namespace System.Management
             // Removed Initialize call since wbemObject is a property that will call Initialize ( true ) on
             // its getter.
             //
-            switch(format)
+            switch (format)
             {
                 case TextFormat.Mof :
 
@@ -637,7 +637,7 @@ namespace System.Management
 
                     return objText;
 
-                default :
+                default:
 
                     return null;
             }

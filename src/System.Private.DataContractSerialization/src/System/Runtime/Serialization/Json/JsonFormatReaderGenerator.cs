@@ -21,7 +21,7 @@ namespace System.Runtime.Serialization.Json
 
     internal sealed class JsonFormatReaderGenerator
     {
-        private CriticalHelper _helper;
+        private readonly CriticalHelper _helper;
 
         public JsonFormatReaderGenerator()
         {
@@ -248,7 +248,7 @@ namespace System.Runtime.Serialization.Json
                 }
             }
 
-            bool HasFactoryMethod(ClassDataContract classContract)
+            private bool HasFactoryMethod(ClassDataContract classContract)
             {
                 return Globals.TypeOfIObjectReference.IsAssignableFrom(classContract.UnderlyingType);
             }

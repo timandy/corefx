@@ -21,29 +21,29 @@ namespace System.Xml.Schema
     /// </summary>
     public class XmlSchemaSet
     {
-        private XmlNameTable _nameTable;
+        private readonly XmlNameTable _nameTable;
         private SchemaNames _schemaNames;
-        private SortedList _schemas;              // List of source schemas
+        private readonly SortedList _schemas;              // List of source schemas
 
         //Event handling
-        private ValidationEventHandler _internalEventHandler;
+        private readonly ValidationEventHandler _internalEventHandler;
         private ValidationEventHandler _eventHandler;
 
         private bool _isCompiled = false;
 
         //Dictionary<Uri, XmlSchema> schemaLocations;
         //Dictionary<ChameleonKey, XmlSchema> chameleonSchemas;
-        private Hashtable _schemaLocations;
-        private Hashtable _chameleonSchemas;
+        private readonly Hashtable _schemaLocations;
+        private readonly Hashtable _chameleonSchemas;
 
-        private Hashtable _targetNamespaces;
+        private readonly Hashtable _targetNamespaces;
         private bool _compileAll;
 
         //Cached Compiled Info
         private SchemaInfo _cachedCompiledInfo;
 
         //Reader settings to parse schema
-        private XmlReaderSettings _readerSettings;
+        private readonly XmlReaderSettings _readerSettings;
         private XmlSchema _schemaForSchema;  //Only one schema for schema per set
 
         //Schema compilation settings
@@ -651,7 +651,7 @@ namespace System.Xml.Schema
             // Due to bug 644477 - this method is tightly coupled (THE CODE IS BASICALLY COPIED) to Remove, Add and AddSchemaToSet
             // methods. If you change anything here *make sure* to update Remove/Add/AddSchemaToSet method(s) accordingly.
             // The only difference is that we don't touch .schemas collection here to not break a code like this:
-            // foreach(XmlSchema s in schemaset.schemas) { schemaset.Reprocess(s); }
+            // foreach (XmlSchema s in schemaset.schemas) { schemaset.Reprocess(s); }
             // This is by purpose.
             if (schema == null)
             {
@@ -829,7 +829,7 @@ namespace System.Xml.Schema
             }
 
             foreach (XmlSchemaElement element in schema.Elements.Values) {
-                if(!AddToTable(elements, element.QualifiedName, element)) {
+                if (!AddToTable(elements, element.QualifiedName, element)) {
                     RemoveSchemaFromGlobalTables(schema);
                     return false;
                 }
