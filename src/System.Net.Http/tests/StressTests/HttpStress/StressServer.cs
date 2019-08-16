@@ -1,13 +1,13 @@
-﻿// Licensed to the .NET Foundation under one or more agreements.
+// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
 using System;
-using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Diagnostics.Tracing;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
@@ -29,17 +29,20 @@ namespace HttpStress
 {
     public class StressServer : IDisposable
     {
+        // Header indicating expected response content length to be returned by the server
+        public const string ExpectedResponseContentLength = "Expected-Response-Content-Length";
+
         private EventListener _eventListener;
         private readonly IWebHost _webHost;
 
         public Uri ServerUri { get; }
 
-        public StressServer(Uri serverUri, bool httpSys, int maxContentLength, int maxRequestUriSize, string logPath, bool enableAspNetLogs)
+        public StressServer(Configuration configuration)
         {
-            ServerUri = serverUri;
+            ServerUri = configuration.ServerUri;
             IWebHostBuilder host = WebHost.CreateDefaultBuilder();
 
-            if (httpSys)
+            if (configuration.UseHttpSys)
             {
                 // Use http.sys.  This requires additional manual configuration ahead of time;
                 // see https://docs.microsoft.com/en-us/aspnet/core/fundamentals/servers/httpsys?view=aspnetcore-2.2#configure-windows-server.
@@ -62,9 +65,11 @@ namespace HttpStress
                 host = host.UseKestrel(ko =>
                 {
                     // conservative estimation based on https://github.com/aspnet/AspNetCore/blob/caa910ceeba5f2b2c02c47a23ead0ca31caea6f0/src/Servers/Kestrel/Core/src/Internal/Http2/Http2Stream.cs#L204
-                    ko.Limits.MaxRequestLineSize = Math.Max(ko.Limits.MaxRequestLineSize, maxRequestUriSize + 100);
+                    ko.Limits.MaxRequestLineSize = Math.Max(ko.Limits.MaxRequestLineSize, configuration.MaxRequestUriSize + 100);
 
-                    ko.ListenLocalhost(serverUri.Port, listenOptions =>
+                    IPAddress iPAddress = Dns.GetHostAddresses(configuration.ServerUri.Host).First();
+
+                    ko.Listen(iPAddress, configuration.ServerUri.Port, listenOptions =>
                     {
                         // Create self-signed cert for server.
                         using (RSA rsa = RSA.Create())
@@ -86,19 +91,19 @@ namespace HttpStress
 
             // Output only warnings and errors from Kestrel
             host = host
-                .ConfigureLogging(log => log.AddFilter("Microsoft.AspNetCore", level => enableAspNetLogs ? level >= LogLevel.Warning : false))
+                .ConfigureLogging(log => log.AddFilter("Microsoft.AspNetCore", level => configuration.LogAspNet ? level >= LogLevel.Warning : false))
                 // Set up how each request should be handled by the server.
                 .Configure(app =>
                 {
                     var head = new[] { "HEAD" };
                     app.UseRouting();
-                    app.UseEndpoints(e => MapRoutes(e, maxContentLength));
+                    app.UseEndpoints(MapRoutes);
                 });
 
             // Handle command-line arguments.
             _eventListener =
-                logPath == null ? null :
-                new HttpEventListener(logPath != "console" ? new StreamWriter(logPath) { AutoFlush = true } : null);
+                configuration.LogPath == null ? null :
+                new HttpEventListener(configuration.LogPath != "console" ? new StreamWriter(configuration.LogPath) { AutoFlush = true } : null);
 
             SetUpJustInTimeLogging();
 
@@ -106,28 +111,30 @@ namespace HttpStress
             _webHost.Start();
         }
 
-        private void MapRoutes(IEndpointRouteBuilder endpoints, int maxContentLength)
+        private static void MapRoutes(IEndpointRouteBuilder endpoints)
         {
-            string contentSource = string.Concat(Enumerable.Repeat("1234567890", maxContentLength / 10));
             var head = new[] { "HEAD" };
 
             endpoints.MapGet("/", async context =>
             {
                 // Get requests just send back the requested content.
-                await context.Response.WriteAsync(contentSource);
+                string content = CreateResponseContent(context);
+                await context.Response.WriteAsync(content);
             });
             endpoints.MapGet("/slow", async context =>
             {
                 // Sends back the content a character at a time.
-                for (int i = 0; i < contentSource.Length; i++)
+                string content = CreateResponseContent(context);
+
+                for (int i = 0; i < content.Length; i++)
                 {
-                    await context.Response.WriteAsync(contentSource[i].ToString());
+                    await context.Response.WriteAsync(content[i].ToString());
                     await context.Response.Body.FlushAsync();
                 }
             });
             endpoints.MapGet("/headers", async context =>
             {
-                (string name, StringValues values)[] headersToEcho = 
+                (string name, StringValues values)[] headersToEcho =
                         context.Request.Headers
                         // filter the pseudo-headers surfaced by Kestrel
                         .Where(h => !h.Key.StartsWith(':'))
@@ -135,7 +142,7 @@ namespace HttpStress
                         .Select(h => (h.Key, new StringValues(h.Value.SelectMany(v => v.Split(',')).Select(x => x.Trim()).ToArray())))
                         .ToArray();
 
-                foreach((string name, StringValues values) in headersToEcho)
+                foreach ((string name, StringValues values) in headersToEcho)
                 {
                     context.Response.Headers.Add(name, values);
                 }
@@ -168,7 +175,8 @@ namespace HttpStress
             endpoints.MapGet("/abort", async context =>
             {
                 // Server writes some content, then aborts the connection
-                await context.Response.WriteAsync(contentSource.Substring(0, contentSource.Length / 2));
+                string content = CreateResponseContent(context);
+                await context.Response.WriteAsync(content.Substring(0, content.Length / 2));
                 context.Abort();
             });
             endpoints.MapPost("/", async context =>
@@ -196,7 +204,8 @@ namespace HttpStress
             endpoints.MapMethods("/", head, context =>
             {
                 // Just set the max content length on the response.
-                context.Response.Headers.ContentLength = maxContentLength;
+                string content = CreateResponseContent(context);
+                context.Response.Headers.ContentLength = content.Length;
                 return Task.CompletedTask;
             });
             endpoints.MapPut("/", async context =>
@@ -280,5 +289,46 @@ namespace HttpStress
                 }
             }
         }
+
+        private static string CreateResponseContent(HttpContext ctx)
+        {
+            return ServerContentUtils.CreateStringContent(GetExpectedContentLength());
+
+            int GetExpectedContentLength()
+            {
+                if (ctx.Request.Headers.TryGetValue(ExpectedResponseContentLength, out StringValues values) && 
+                    values.Count == 1 &&
+                    int.TryParse(values[0], out int result))
+                {
+                    return result;
+                }
+
+                throw new Exception($"Could not parse {ExpectedResponseContentLength} header");
+            }
+        }
+    }
+
+    public static class ServerContentUtils
+    {
+        // deterministically generate ascii string of given length
+        public static string CreateStringContent(int contentSize) =>
+            new String(
+                Enumerable
+                    .Range(0, contentSize)
+                    .Select(i => (char)(i % 128))
+                    .ToArray());
+
+        // used for validating content on client side
+        public static bool IsValidServerContent(string input)
+        {
+            for (int i = 0; i < input.Length; i++)
+            {
+                if (input[i] != i % 128)
+                    return false;
+            }
+
+            return true;
+        }
+
     }
 }
